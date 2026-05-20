@@ -13,7 +13,7 @@ from rich.table import Table
 
 from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
-from ninja_harness.datasets.loader import load_trace
+from ninja_harness.datasets.loader import load_task, load_trace
 from ninja_harness.policy import apply_policy, load_policy
 from ninja_harness.redteam import run_all_checks
 from ninja_harness.report import (
@@ -24,8 +24,9 @@ from ninja_harness.report import (
     save_report,
 )
 from ninja_harness.reporters import evaluation_to_junit, to_sarif
-from ninja_harness.runner import EvaluationRunner, SuiteRunner
+from ninja_harness.runner import EvaluationRunner, SuiteRunner, TaskExecutor
 from ninja_harness.schemas import AgentRun, AggregateResult, EvaluationResult, SuiteResult
+from ninja_harness.solver import CommandSolver, ScriptedSolver
 from ninja_harness.statistics import aggregate_results
 
 app = typer.Typer(
@@ -301,6 +302,66 @@ def suite(
         console.print(f"\n[dim]Suite results saved to:[/] {output}")
 
     if suite_result.failed > 0 or suite_result.errors:
+        raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# run command — end-to-end: drive an agent, capture, evaluate, certify
+# ---------------------------------------------------------------------------
+
+@app.command()
+def run(
+    task: Path = typer.Option(..., help="Path to a task YAML/JSON file."),
+    solver_cmd: str | None = typer.Option(
+        None, "--solver-cmd", help="Shell command for the agent (receives task JSON on stdin, prints trace JSON)."
+    ),
+    replay: Path | None = typer.Option(
+        None, help="Replay a captured trace JSON instead of running an agent (ScriptedSolver)."
+    ),
+    seed: int | None = typer.Option(None, help="Seed recorded in the manifest and applied to the process."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save the full RunReport JSON."),
+    format: str = typer.Option("rich", help="Output format: rich | json."),
+) -> None:
+    """Drive an agent against a task, capture its trace, evaluate, and certify."""
+    try:
+        task_spec = load_task(task)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    if replay:
+        solver = ScriptedSolver(trace_path=str(replay))
+    elif solver_cmd:
+        import shlex
+
+        solver = CommandSolver(shlex.split(solver_cmd))
+    else:
+        console.print("[bold red]Error:[/] provide either --solver-cmd or --replay.")
+        raise typer.Exit(1)
+
+    executor = TaskExecutor()
+    try:
+        report = executor.run(task_spec, solver, seed=seed)
+    except (RuntimeError, ValueError, TypeError) as exc:
+        console.print(f"[bold red]Run failed:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    if format == "json":
+        console.print_json(report.model_dump_json(indent=2))
+    else:
+        _render_rich_result(report.result, report.run)
+        m = report.manifest
+        console.print(
+            f"\n[dim]Manifest:[/] solver={m.solver} sandbox={m.sandbox} "
+            f"seed={m.seed} trace_sha256={m.trace_sha256[:12]}… "
+            f"git={(m.git_sha or 'n/a')[:8]}"
+        )
+
+    if output:
+        save_report(report.model_dump_json(indent=2), str(output))
+        console.print(f"[dim]Run report saved to:[/] {output}")
+
+    if report.result.certification == "FAIL":
         raise typer.Exit(2)
 
 

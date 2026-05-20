@@ -3,20 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+import os
+import random
 from pathlib import Path
 
 from ninja_harness.adapters import detect_adapter
 from ninja_harness.datasets.loader import load_eval_case, load_suite, load_trace
+from ninja_harness.provenance import build_manifest
+from ninja_harness.sandbox import Sandbox, make_sandbox
 from ninja_harness.schemas import (
     AgentRun,
     EvaluationCase,
     EvaluationResult,
+    RunReport,
     SuiteCaseSpec,
     SuiteResult,
     SuiteSpec,
+    TaskSpec,
 )
 from ninja_harness.scoring.judge import Judge
 from ninja_harness.scoring.ninja_score import NinjaScoreAggregator
+from ninja_harness.solver import Solver
 
 
 class EvaluationRunner:
@@ -125,3 +132,47 @@ class SuiteRunner:
         if use_async:
             return asyncio.run(self.run_suite_async(spec))
         return self.run_suite(spec)
+
+
+class TaskExecutor:
+    """
+    End-to-end runner: drive an agent against a task, capture the trace,
+    evaluate it, and produce a certified RunReport with a reproducibility
+    manifest.
+
+    Pipeline:  TaskSpec -> Solver.solve() -> AgentRun -> evaluate -> RunReport
+    """
+
+    def __init__(self, judge: Judge | None = None, baseline_path: str | None = None) -> None:
+        self._aggregator = NinjaScoreAggregator(baseline_path=baseline_path, judge=judge)
+
+    def run(
+        self,
+        task: TaskSpec,
+        solver: Solver,
+        sandbox: Sandbox | None = None,
+        seed: int | None = None,
+    ) -> RunReport:
+        if seed is not None:
+            random.seed(seed)
+            os.environ["PYTHONHASHSEED"] = str(seed)
+
+        if sandbox is None and task.sandbox != "none":
+            sandbox = make_sandbox(task.sandbox, image=task.sandbox_image)
+
+        run = solver.solve(task, sandbox)
+
+        # Ensure the run carries the task text for downstream scoring.
+        if not run.task:
+            run = run.model_copy(update={"task": task.prompt})
+
+        result = self._aggregator.evaluate(run, task.eval_case)
+
+        manifest = build_manifest(
+            run=run,
+            solver=getattr(solver, "name", "unknown"),
+            sandbox=sandbox.name if sandbox else "none",
+            seed=seed,
+        )
+
+        return RunReport(task_id=task.task_id, run=run, result=result, manifest=manifest)

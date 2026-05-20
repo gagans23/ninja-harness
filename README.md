@@ -248,13 +248,38 @@ See [docs/evaluation_methodology.md](docs/evaluation_methodology.md) for the res
 
 ---
 
+## Run an agent end-to-end (v0.4)
+
+Ninja Harness can now *drive* an agent, not just score a trace it's handed. Define a task, point it at your agent, and get a certified report with a reproducibility manifest:
+
+```bash
+# Your agent: any program that reads a task JSON on stdin and prints a trace JSON.
+ninja-harness run \
+  --task src/ninja_harness/examples/task.yaml \
+  --solver-cmd "python my_agent.py" \
+  --seed 42 -o report.json
+
+# Or re-run a previously captured trace through the full pipeline:
+ninja-harness run --task src/ninja_harness/examples/task.yaml --replay trace.json
+```
+
+The pipeline is: **TaskSpec → Solver → AgentRun → evaluate → certified RunReport**.
+
+- **Solvers**: `CommandSolver` (any agent, any language, via stdin/stdout), `ScriptedSolver` (replay), `CallableSolver` (in-process Python). No LLM is bundled — you bring the agent.
+- **Sandbox**: `local` (subprocess + timeout) or `docker` (isolated; shells to the `docker` CLI, errors clearly if absent).
+- **Reproducibility manifest**: every run records harness/Python versions, platform, git SHA, seed, and a SHA-256 of the trace.
+
+A working, dependency-free example agent lives at [examples/agents/echo_agent.py](examples/agents/echo_agent.py).
+
+---
+
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md) for full details.
 
 **v0.2** ✅ — Real framework adapters, async + suite runner, judge plug-in interface, baseline save
 **v0.3** ✅ — Reliability stats (`pass^k`), OTel ingest, OWASP/ATLAS mapping, SARIF/JUnit, policy gate, judge bias mitigation
-**v0.4** — Dataset registry, `diff` command, pytest plugin, HTML dashboards
+**v0.4** 🚧 — Closed loop: `run` (solver + sandbox + manifest) ✅ · next: benchmark loaders (SWE-bench/τ-bench/GAIA), user simulator, trace viewer, calibration
 **v1.0** — Stable API, governance report templates, community plugins
 
 ---

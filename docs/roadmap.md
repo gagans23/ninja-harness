@@ -52,16 +52,21 @@
 
 ---
 
-## v0.4 — Dataset Registry, Dashboards & Deeper Integration
+## v0.4 — End-to-End Harness (in progress)
 
-- [ ] Built-in eval case dataset registry (curated multi-domain eval cases)
-- [ ] `ninja-harness diff` — rich comparison of two EvaluationResult JSON files
+Turning Ninja from a trace scorer into a full harness that *runs* agents.
+
+- [x] **Closed loop** — `ninja-harness run` drives an agent, captures the trace, evaluates, and certifies
+- [x] **Solver abstraction** — `CommandSolver` (any agent/any language), `ScriptedSolver`, `CallableSolver`
+- [x] **Sandbox** — `LocalSandbox` (subprocess+timeout) and `DockerSandbox` (host isolation; no silent fallback)
+- [x] **Reproducibility manifest** — versions, platform, git SHA, seed, trace SHA-256
+- [ ] **Real benchmark loaders** — SWE-bench / τ-bench / GAIA on-disk formats → EvaluationCases (bring-your-own-dataset; no fabricated scores)
+- [ ] **Multi-turn user simulator** — τ-bench-style simulated user (pluggable model, deterministic default)
+- [ ] **Trace viewer UI** — self-contained static HTML trajectory explorer
+- [ ] **Human annotation / calibration loop** — judge-vs-human agreement + correlation
+- [ ] `ninja-harness diff` — rich comparison of two results
 - [ ] Judge plug-in extended to the Grounding metric
-- [ ] Per-metric thresholds configurable inline in eval case YAML
-- [ ] `pytest` plugin: `pytest --ninja-harness-trace trace.json`
-- [ ] Native OTLP/protobuf span ingest (beyond the simplified JSON span list)
-- [ ] Token-budget / cost efficiency scoring improvements
-- [ ] HTML reliability dashboard with trend charts
+- [ ] `pytest` plugin; native OTLP/protobuf span ingest; HTML reliability dashboard
 
 ---
 

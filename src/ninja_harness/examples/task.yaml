@@ -1,0 +1,27 @@
+task_id: "task-research-summary"
+prompt: "Summarize recent advances in transformer efficiency techniques published in 2024."
+
+tools:
+  - name: web_search
+    description: "Search the web for relevant documents."
+    parameters:
+      query: "string"
+
+# How the agent is sandboxed when run: none | local | docker
+sandbox: "local"
+
+# Optional grading rubric: the eval case the captured trace is scored against.
+eval_case:
+  case_id: "case-transformer-efficiency"
+  task: "Summarize recent advances in transformer efficiency techniques published in 2024."
+  expected_output: "Key advances: FlashAttention, MoE routing, speculative decoding, quantization."
+  references:
+    - "FlashAttention reduces attention memory cost."
+    - "Mixture-of-Experts routing reduces per-token compute."
+    - "Speculative decoding speeds up inference."
+  max_steps: 10
+  max_tool_calls: 5
+
+metadata:
+  domain: "AI research"
+  difficulty: "easy"

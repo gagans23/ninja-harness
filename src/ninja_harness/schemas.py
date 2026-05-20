@@ -260,3 +260,58 @@ class GateResult(BaseModel):
     policy_name: str
     passed: bool
     violations: list[GateViolation] = Field(default_factory=list)
+
+
+class ToolSpec(BaseModel):
+    """A tool made available to an agent during a run."""
+
+    name: str
+    description: str = ""
+    parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class TaskSpec(BaseModel):
+    """
+    A runnable task: the prompt to give the agent, the tools it may use, and
+    (optionally) the eval case it will be graded against. Consumed by the
+    `run` command to drive an agent end to end.
+    """
+
+    task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    prompt: str
+    tools: list[ToolSpec] = Field(default_factory=list)
+    eval_case: EvaluationCase | None = None
+    max_steps: int | None = None
+    sandbox: str = "none"  # none | local | docker
+    sandbox_image: str | None = None  # for docker sandbox
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class RunManifest(BaseModel):
+    """
+    Reproducibility manifest captured when an agent is run through the harness.
+
+    Records enough provenance to reproduce (or at least audit) a run: tool
+    versions, platform, git SHA, the seed used, and a content hash of the
+    captured trace.
+    """
+
+    ninja_harness_version: str
+    python_version: str
+    platform: str
+    created_at: datetime
+    solver: str
+    sandbox: str
+    seed: int | None = None
+    git_sha: str | None = None
+    trace_sha256: str = ""
+    package_versions: dict[str, str] = Field(default_factory=dict)
+
+
+class RunReport(BaseModel):
+    """The complete output of a `run`: trace + evaluation + provenance."""
+
+    task_id: str
+    run: AgentRun
+    result: EvaluationResult
+    manifest: RunManifest

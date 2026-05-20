@@ -8,13 +8,17 @@ from ninja_harness.schemas import (
     GuardrailEvent,
     Handoff,
     MetricResult,
+    RunManifest,
+    RunReport,
     SuiteCaseSpec,
     SuiteResult,
     SuiteSpec,
+    TaskSpec,
     ToolCall,
+    ToolSpec,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "AgentRun",
     "AgentStep",
@@ -23,9 +27,13 @@ __all__ = [
     "GuardrailEvent",
     "Handoff",
     "MetricResult",
+    "RunManifest",
+    "RunReport",
     "SuiteCaseSpec",
     "SuiteResult",
     "SuiteSpec",
+    "TaskSpec",
     "ToolCall",
+    "ToolSpec",
     "__version__",
 ]

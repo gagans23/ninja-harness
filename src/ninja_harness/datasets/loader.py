@@ -7,7 +7,7 @@ from pathlib import Path
 
 import yaml
 
-from ninja_harness.schemas import AgentRun, EvaluationCase, SuiteSpec
+from ninja_harness.schemas import AgentRun, EvaluationCase, SuiteSpec, TaskSpec
 
 
 def load_trace(path: str | Path) -> dict:
@@ -44,6 +44,21 @@ def load_agent_run_from_file(path: str | Path) -> AgentRun:
     """Load a fully parsed AgentRun from a JSON file (Ninja Harness native format)."""
     raw = load_trace(path)
     return AgentRun.model_validate(raw)
+
+
+def load_task(path: str | Path) -> TaskSpec:
+    """Load a runnable TaskSpec from a YAML or JSON file."""
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Task file not found: {p}")
+    with p.open() as f:
+        if p.suffix.lower() in {".yaml", ".yml"}:
+            raw = yaml.safe_load(f)
+        elif p.suffix.lower() == ".json":
+            raw = json.load(f)
+        else:
+            raise ValueError(f"Task files must be YAML or JSON, got: {p.suffix}")
+    return TaskSpec.model_validate(raw)
 
 
 def load_suite(path: str | Path) -> SuiteSpec:

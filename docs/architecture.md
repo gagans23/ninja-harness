@@ -172,3 +172,32 @@ class Judge(Protocol):
 - Custom judges (e.g. an LLM-as-judge) implement the protocol and are injected via `GoalSuccessScorer(judge=...)` or `EvaluationRunner(judge=...)`
 
 The core library makes no network calls — any LLM client is supplied by the user.
+
+---
+
+## End-to-End Run Pipeline (v0.4)
+
+Beyond scoring a trace it is handed, Ninja Harness can drive an agent itself:
+
+```
+TaskSpec ──> Solver.solve() ──> AgentRun ──> NinjaScoreAggregator ──> RunReport
+   │              │                                                      │
+   │              └─ optional Sandbox (local | docker)                   ├─ EvaluationResult
+   └─ prompt + tools + eval_case                                         └─ RunManifest (provenance)
+```
+
+- **`Solver`** (`solver.py`) — `solve(task, sandbox) -> AgentRun`.
+  - `CommandSolver`: runs an external agent (any language) that reads the task as
+    JSON on stdin and prints a trace JSON to stdout.
+  - `ScriptedSolver`: replays a captured trace (deterministic).
+  - `CallableSolver`: wraps an in-process Python callable.
+- **`Sandbox`** (`sandbox.py`) — `LocalSandbox` (subprocess + timeout) or
+  `DockerSandbox` (shells to the `docker` CLI; raises if absent — no silent
+  fallback that would defeat isolation).
+- **`TaskExecutor`** (`runner.py`) — orchestrates solve → evaluate → manifest and
+  returns a `RunReport`.
+- **`RunManifest`** (`provenance.py`) — records harness/Python versions, platform,
+  git SHA, seed, and a SHA-256 of the trace. It documents conditions honestly; it
+  cannot force determinism of an external LLM agent.
+
+The CLI exposes this as `ninja-harness run --task task.yaml --solver-cmd "..."`.

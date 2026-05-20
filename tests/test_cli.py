@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -14,6 +15,8 @@ FAILING_TRACE = str(Path("src/ninja_harness/examples/failing_agent_trace.json"))
 SUITE = str(Path("src/ninja_harness/examples/example_suite.yaml"))
 OPENAI_TRACE = str(Path("src/ninja_harness/examples/openai_agents_trace.json"))
 OTEL_TRACE = str(Path("src/ninja_harness/examples/opentelemetry_trace.json"))
+TASK = str(Path("src/ninja_harness/examples/task.yaml"))
+ECHO_AGENT = str(Path("examples/agents/echo_agent.py"))
 
 runner = CliRunner()
 
@@ -166,3 +169,30 @@ def test_gate_command_passes_lenient_policy(tmp_path: Path) -> None:
     result = runner.invoke(app, ["gate", "--results", str(res), "--policy", str(policy)])
     assert result.exit_code == 0
     assert "PASSED" in result.output
+
+
+def test_run_command_replay(tmp_path: Path) -> None:
+    out = tmp_path / "report.json"
+    result = runner.invoke(
+        app, ["run", "--task", TASK, "--replay", TRACE, "-o", str(out), "--format", "json"]
+    )
+    assert result.exit_code in (0, 2)
+    assert "manifest" in result.output
+    assert out.exists()
+
+
+def test_run_command_with_solver_cmd() -> None:
+    result = runner.invoke(
+        app,
+        ["run", "--task", TASK, "--solver-cmd", f"{sys.executable} {ECHO_AGENT}", "--seed", "5", "--format", "json"],
+    )
+    # Echo agent is trivial; certification may be FAIL (exit 2) — both fine.
+    assert result.exit_code in (0, 2)
+    assert "EchoAgent" in result.output
+    assert "trace_sha256" in result.output
+
+
+def test_run_command_requires_solver() -> None:
+    result = runner.invoke(app, ["run", "--task", TASK])
+    assert result.exit_code == 1
+    assert "solver-cmd" in result.output or "replay" in result.output

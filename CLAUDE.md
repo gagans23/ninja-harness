@@ -87,9 +87,17 @@ Still no built-in LLM client — judges are user-supplied. Standards IDs must be
 real (don't invent OWASP/ATLAS identifiers). Statistics describe observed runs,
 not extrapolations — keep them honest.
 
-## v0.4 priorities
+## v0.4 (in progress — end-to-end harness)
 
-- Built-in eval case dataset registry
-- `ninja-harness diff` for comparing two results
-- Extend the `Judge` plug-in to the Grounding metric
-- pytest plugin; native OTLP/protobuf span ingest
+- Closed loop shipped: `solver.py` (CommandSolver/ScriptedSolver/CallableSolver),
+  `sandbox.py` (LocalSandbox/DockerSandbox), `provenance.py` (RunManifest),
+  `TaskExecutor` in `runner.py`, `run` CLI command. TaskSpec/RunReport in schemas.
+- CommandSolver contract: agent reads TaskSpec JSON on stdin, prints a trace JSON
+  on stdout. Example: `examples/agents/echo_agent.py`.
+- DockerSandbox must never silently fall back to local (defeats isolation).
+- Still no bundled LLM agent — bring your own via a solver.
+
+Remaining v0.4: real benchmark loaders (SWE-bench/τ-bench/GAIA on-disk formats,
+bring-your-own-dataset, NO fabricated scores), multi-turn user simulator
+(pluggable model + deterministic default), static-HTML trace viewer, human
+annotation/calibration loop. Then `diff`, grounding judge, pytest plugin.
