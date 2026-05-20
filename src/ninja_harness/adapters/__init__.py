@@ -7,6 +7,7 @@ from ninja_harness.adapters.custom_json import CustomJsonAdapter
 from ninja_harness.adapters.hermes import HermesAdapter
 from ninja_harness.adapters.langgraph import LangGraphAdapter
 from ninja_harness.adapters.openai_agents import OpenAIAgentsAdapter
+from ninja_harness.adapters.opentelemetry import OpenTelemetryAdapter
 
 __all__ = [
     "AutoGenAdapter",
@@ -15,6 +16,7 @@ __all__ = [
     "HermesAdapter",
     "LangGraphAdapter",
     "OpenAIAgentsAdapter",
+    "OpenTelemetryAdapter",
     "TraceAdapter",
 ]
 
@@ -26,6 +28,7 @@ ADAPTER_REGISTRY: list[TraceAdapter] = [
     HermesAdapter(),
     CrewAIAdapter(),
     AutoGenAdapter(),
+    OpenTelemetryAdapter(),
 ]
 
 

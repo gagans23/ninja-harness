@@ -188,6 +188,7 @@ ninja-harness report --results results.json --format markdown
 | Hermes multi-agent | ✅ Supported (v0.2) |
 | CrewAI | ✅ Supported (v0.2) |
 | AutoGen | ✅ Supported (v0.2) |
+| OpenTelemetry GenAI | ✅ Supported (v0.3) — `gen_ai.*` spans, framework-agnostic |
 
 Framework adapters transform native traces into Ninja Harness's `AgentRun` schema. The correct adapter is auto-detected from the trace shape (or an explicit `"_source"` marker). Each adapter ships with an example trace under `src/ninja_harness/examples/`. See [docs/architecture.md](docs/architecture.md).
 
@@ -214,13 +215,46 @@ Ninja Harness ships no built-in LLM API client — you provide the model. This k
 
 ---
 
+## Production hardening (v0.3)
+
+### Reliability across repeated runs (`pass^k`)
+
+A single run can pass by luck. Run the agent N times and aggregate:
+
+```bash
+ninja-harness aggregate run1.json run2.json run3.json --label checkout_flow
+```
+
+Reports `pass@k`, `pass^k` (succeeds on *all* trials — the reliability metric), mean ± 95% CI, and a RELIABLE / FLAKY / UNRELIABLE verdict. The `pass^k < pass@k` gap is the classic flaky-agent signature.
+
+### CI/CD gating
+
+```bash
+# Emit CI-native formats
+ninja-harness report --results results.json --format sarif   # GitHub Advanced Security
+ninja-harness report --results results.json --format junit   # CI test panels
+
+# Gate a merge on a policy (non-zero exit fails the build)
+ninja-harness gate --results results.json --policy policy.yaml --baseline baseline.json
+```
+
+Policies set per-metric minimums, score floors, max regression vs baseline, and red-team blocking — see [src/ninja_harness/examples/policy.yaml](src/ninja_harness/examples/policy.yaml).
+
+### Safety mapped to standards
+
+Red-team findings are tagged with **OWASP Top 10 for LLM Applications (2025)** IDs and indicative **MITRE ATLAS** techniques, and flow into SARIF for security tooling.
+
+See [docs/evaluation_methodology.md](docs/evaluation_methodology.md) for the research behind these choices.
+
+---
+
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md) for full details.
 
 **v0.2** ✅ — Real framework adapters, async + suite runner, judge plug-in interface, baseline save
-**v0.3** — Built-in dataset registry, CI badge, SARIF output, `diff` command
-**v0.4** — Multi-run aggregation, regression dashboards
+**v0.3** ✅ — Reliability stats (`pass^k`), OTel ingest, OWASP/ATLAS mapping, SARIF/JUnit, policy gate, judge bias mitigation
+**v0.4** — Dataset registry, `diff` command, pytest plugin, HTML dashboards
 **v1.0** — Stable API, governance report templates, community plugins
 
 ---

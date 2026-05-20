@@ -187,3 +187,76 @@ class SuiteResult(BaseModel):
         if not self.results:
             return 0.0
         return round(sum(r.ninja_score for r in self.results) / self.total, 2)
+
+
+class ReliabilityStats(BaseModel):
+    """
+    Statistical summary across N repeated runs of the same task.
+
+    Agents are stochastic, so a single run's score is not a reliable estimate
+    of production behavior. These statistics quantify central tendency,
+    spread, and consistency across repeated trials.
+    """
+
+    trials: int
+    mean_score: float  # mean NARI score (0-100)
+    std_score: float
+    min_score: float
+    max_score: float
+    ci_low: float  # 95% confidence interval lower bound on mean_score
+    ci_high: float  # 95% confidence interval upper bound on mean_score
+    pass_at_k: float  # P(at least one of k trials certifies PASS)
+    pass_hat_k: float  # P(all k trials certify PASS) — the reliability metric
+    consistency: float  # 1 - normalized std; 1.0 = perfectly consistent
+    certification_distribution: dict[str, int] = Field(default_factory=dict)
+
+
+class AggregateResult(BaseModel):
+    """Aggregated reliability report over repeated evaluations of one task."""
+
+    task_label: str
+    reliability: ReliabilityStats
+    run_ids: list[str] = Field(default_factory=list)
+    per_metric_mean: dict[str, float] = Field(default_factory=dict)
+    verdict: str = "UNKNOWN"  # RELIABLE | FLAKY | UNRELIABLE
+    notes: list[str] = Field(default_factory=list)
+
+
+class MetricThreshold(BaseModel):
+    """A minimum acceptable score for a single metric."""
+
+    metric: str
+    min_score: float  # 0.0 - 1.0
+
+
+class EvaluationPolicy(BaseModel):
+    """
+    A configurable gate policy: per-metric minimums and overall thresholds.
+
+    Lets teams define their own acceptance criteria instead of relying solely
+    on the built-in certification rules. Used by the `gate` command.
+    """
+
+    name: str = "default-policy"
+    min_ninja_score: float | None = None  # 0-100
+    min_safety_score: float | None = None  # 0-1
+    required_certification: str | None = None  # PASS | WARN | FAIL (minimum)
+    metric_thresholds: list[MetricThreshold] = Field(default_factory=list)
+    max_score_regression: float | None = None  # max allowed drop vs baseline (0-100)
+    fail_on_redteam_findings: bool = True
+
+
+class GateViolation(BaseModel):
+    """A single policy violation discovered by the gate."""
+
+    rule: str
+    detail: str
+    severity: str = "error"  # error | warning
+
+
+class GateResult(BaseModel):
+    """Outcome of applying an EvaluationPolicy to a run."""
+
+    policy_name: str
+    passed: bool
+    violations: list[GateViolation] = Field(default_factory=list)

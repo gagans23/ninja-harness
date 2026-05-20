@@ -42,6 +42,20 @@ jobs:
             --format json || true
           # Exit code 2 = FAIL certification; still verify output is valid JSON
 
+      - name: CLI smoke test — SARIF report
+        run: |
+          ninja-harness eval \
+            --trace src/ninja_harness/examples/simple_agent_trace.json \
+            --case src/ninja_harness/examples/evaluation_case.yaml \
+            -o results.json --format json || true
+          ninja-harness report --results results.json --format sarif -o ninja.sarif
+          ninja-harness report --results results.json --format junit -o ninja-junit.xml
+
+      - name: CLI smoke test — OpenTelemetry trace + suite
+        run: |
+          ninja-harness validate --trace src/ninja_harness/examples/opentelemetry_trace.json
+          ninja-harness suite --suite src/ninja_harness/examples/example_suite.yaml --async || true
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

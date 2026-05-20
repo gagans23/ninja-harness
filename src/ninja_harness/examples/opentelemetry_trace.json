@@ -1,0 +1,43 @@
+{
+  "_source": "opentelemetry",
+  "spans": [
+    {
+      "name": "invoke_agent SupportAgent",
+      "attributes": {
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.agent.name": "SupportAgent",
+        "gen_ai.request.model": "gpt-4o",
+        "gen_ai.input.messages": [
+          {"role": "user", "content": "What is the status of my order #A-7781?"}
+        ],
+        "gen_ai.usage.input_tokens": 120,
+        "gen_ai.usage.output_tokens": 0
+      },
+      "status": {"code": "OK"}
+    },
+    {
+      "name": "execute_tool lookup_order",
+      "attributes": {
+        "gen_ai.operation.name": "execute_tool",
+        "gen_ai.tool.name": "lookup_order",
+        "gen_ai.tool.call.arguments": {"order_id": "A-7781"},
+        "gen_ai.tool.call.result": "Order A-7781 shipped on 2026-05-15, expected delivery 2026-05-21."
+      },
+      "status": {"code": "OK"}
+    },
+    {
+      "name": "invoke_agent SupportAgent",
+      "attributes": {
+        "gen_ai.operation.name": "invoke_agent",
+        "gen_ai.agent.name": "SupportAgent",
+        "gen_ai.request.model": "gpt-4o",
+        "gen_ai.output.messages": [
+          {"role": "assistant", "content": "Your order #A-7781 shipped on May 15 and is expected to arrive on May 21, 2026."}
+        ],
+        "gen_ai.usage.input_tokens": 0,
+        "gen_ai.usage.output_tokens": 38
+      },
+      "status": {"code": "OK"}
+    }
+  ]
+}

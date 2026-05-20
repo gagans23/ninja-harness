@@ -125,3 +125,107 @@ class EmbeddingJudge:
             "model": self._model_name,
             "cosine_similarity": round(cosine, 4),
         }
+
+
+class RubricJudge:
+    """
+    Rubric-based judge: scores a prediction against a reference using a set of
+    weighted criteria, each evaluated by a per-criterion comparator.
+
+    Rubric-based evaluation is the recommended way to use an LLM-as-judge
+    (separating distinct quality dimensions reduces single-axis bias). This
+    deterministic implementation uses token-overlap per criterion by default;
+    swap in an LLM-backed criterion function for production use.
+
+    rubric: list of (criterion_name, weight, optional comparator). Weights are
+    normalized automatically.
+    """
+
+    name = "rubric"
+
+    def __init__(
+        self,
+        rubric: list[tuple[str, float]] | None = None,
+        criterion_judge: Judge | None = None,
+    ) -> None:
+        self._rubric = rubric or [("relevance", 0.5), ("completeness", 0.5)]
+        self._criterion_judge = criterion_judge or DeterministicJudge()
+
+    def compare(self, prediction: str, reference: str) -> tuple[float, dict]:
+        total_weight = sum(w for _, w in self._rubric) or 1.0
+        breakdown: dict[str, float] = {}
+        weighted = 0.0
+        for name, weight in self._rubric:
+            crit_score, _ = self._criterion_judge.compare(prediction, reference)
+            breakdown[name] = round(crit_score, 4)
+            weighted += (weight / total_weight) * crit_score
+        return round(weighted, 4), {
+            "judge": self.name,
+            "criteria": breakdown,
+            "criterion_judge": self._criterion_judge.name,
+        }
+
+
+class PositionSwapJudge:
+    """
+    Bias-mitigation wrapper: runs the inner judge in both orderings
+    (prediction-vs-reference and reference-vs-prediction) and averages.
+
+    Position bias — where a judge favors the answer in a particular slot — is
+    one of the most reliable LLM-judge biases. Evaluating both permutations and
+    averaging is the standard mitigation.
+    """
+
+    name = "position_swap"
+
+    def __init__(self, inner: Judge) -> None:
+        self._inner = inner
+
+    def compare(self, prediction: str, reference: str) -> tuple[float, dict]:
+        forward, fdet = self._inner.compare(prediction, reference)
+        reverse, rdet = self._inner.compare(reference, prediction)
+        avg = (forward + reverse) / 2.0
+        return round(avg, 4), {
+            "judge": self.name,
+            "inner": self._inner.name,
+            "forward": round(forward, 4),
+            "reverse": round(reverse, 4),
+            "position_bias_delta": round(abs(forward - reverse), 4),
+        }
+
+
+class EnsembleJudge:
+    """
+    Bias-mitigation wrapper: aggregates multiple judges and returns the mean
+    score. Using judges from different model families mitigates self-preference
+    bias (a model rating its own family's outputs higher).
+    """
+
+    name = "ensemble"
+
+    def __init__(self, judges: list[Judge], aggregate: str = "mean") -> None:
+        if not judges:
+            raise ValueError("EnsembleJudge requires at least one judge.")
+        self._judges = judges
+        self._aggregate = aggregate
+
+    def compare(self, prediction: str, reference: str) -> tuple[float, dict]:
+        scores: list[float] = []
+        members: dict[str, float] = {}
+        for j in self._judges:
+            s, _ = j.compare(prediction, reference)
+            scores.append(s)
+            members[j.name] = round(s, 4)
+        if self._aggregate == "min":
+            agg = min(scores)
+        elif self._aggregate == "max":
+            agg = max(scores)
+        else:
+            agg = sum(scores) / len(scores)
+        spread = max(scores) - min(scores) if scores else 0.0
+        return round(agg, 4), {
+            "judge": self.name,
+            "members": members,
+            "aggregate": self._aggregate,
+            "disagreement": round(spread, 4),
+        }

@@ -36,17 +36,32 @@
 
 ---
 
-## v0.3 — Dataset Registry + CI Integration
+## v0.3 — Reliability, Standards & CI Integration ✅
+
+**Status**: Shipped. Research-driven hardening for production credibility.
+
+- [x] **Statistical rigor** — multi-run aggregation: `pass@k`, `pass^k`, mean ± 95% CI, std, consistency, RELIABLE/FLAKY/UNRELIABLE verdict (`aggregate` command)
+- [x] **OpenTelemetry GenAI adapter** — ingest `gen_ai.*` spans (`invoke_agent`, `execute_tool`) for true framework-agnosticism
+- [x] **Safety standards mapping** — findings tagged with OWASP LLM Top 10 (2025) IDs + indicative MITRE ATLAS techniques
+- [x] **SARIF 2.1.0 output** for GitHub Advanced Security / Azure DevOps
+- [x] **JUnit XML output** for CI test panels
+- [x] **GitHub Actions step summary** with status badge
+- [x] **Policy gate** — `ninja-harness gate` with per-metric thresholds, score floors, regression guard, red-team blocking (CI exit codes)
+- [x] **Judge bias mitigation** — `RubricJudge`, `PositionSwapJudge`, `EnsembleJudge`
+- [x] `docs/evaluation_methodology.md` documenting the research basis
+
+---
+
+## v0.4 — Dataset Registry, Dashboards & Deeper Integration
 
 - [ ] Built-in eval case dataset registry (curated multi-domain eval cases)
-- [ ] CI badge generator (`ninja-harness badge --results results.json`)
-- [ ] SARIF output for GitHub Advanced Security integration
-- [ ] `ninja-harness diff` — compare two EvaluationResult JSON files
+- [ ] `ninja-harness diff` — rich comparison of two EvaluationResult JSON files
 - [ ] Judge plug-in extended to the Grounding metric
-- [ ] Per-metric pass thresholds configurable in eval case YAML
+- [ ] Per-metric thresholds configurable inline in eval case YAML
 - [ ] `pytest` plugin: `pytest --ninja-harness-trace trace.json`
-- [ ] OpenTelemetry trace ingest (auto-convert OTEL spans to AgentRun)
+- [ ] Native OTLP/protobuf span ingest (beyond the simplified JSON span list)
 - [ ] Token-budget / cost efficiency scoring improvements
+- [ ] HTML reliability dashboard with trend charts
 
 ---
 

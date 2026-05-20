@@ -13,6 +13,7 @@ CASE = str(Path("src/ninja_harness/examples/evaluation_case.yaml"))
 FAILING_TRACE = str(Path("src/ninja_harness/examples/failing_agent_trace.json"))
 SUITE = str(Path("src/ninja_harness/examples/example_suite.yaml"))
 OPENAI_TRACE = str(Path("src/ninja_harness/examples/openai_agents_trace.json"))
+OTEL_TRACE = str(Path("src/ninja_harness/examples/opentelemetry_trace.json"))
 
 runner = CliRunner()
 
@@ -113,3 +114,55 @@ def test_eval_save_baseline(tmp_path: Path) -> None:
     )
     assert result.exit_code in (0, 2)
     assert baseline.exists()
+
+
+def test_validate_otel_trace() -> None:
+    result = runner.invoke(app, ["validate", "--trace", OTEL_TRACE])
+    assert result.exit_code == 0
+    assert "OpenTelemetryAdapter" in result.output
+
+
+def test_report_sarif_format(tmp_path: Path) -> None:
+    res = tmp_path / "r.json"
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(res), "--format", "json"])
+    result = runner.invoke(app, ["report", "--results", str(res), "--format", "sarif"])
+    assert result.exit_code == 0
+    assert "2.1.0" in result.output
+
+
+def test_report_junit_format(tmp_path: Path) -> None:
+    res = tmp_path / "r.json"
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(res), "--format", "json"])
+    result = runner.invoke(app, ["report", "--results", str(res), "--format", "junit"])
+    assert result.exit_code == 0
+    assert "testsuite" in result.output
+
+
+def test_aggregate_command(tmp_path: Path) -> None:
+    r1 = tmp_path / "r1.json"
+    r2 = tmp_path / "r2.json"
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(r1), "--format", "json"])
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(r2), "--format", "json"])
+    result = runner.invoke(app, ["aggregate", str(r1), str(r2), "--label", "demo", "--format", "json"])
+    assert result.exit_code in (0, 2)
+    assert "reliability" in result.output or "pass_hat_k" in result.output
+
+
+def test_gate_command_fails_strict_policy(tmp_path: Path) -> None:
+    res = tmp_path / "r.json"
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(res), "--format", "json"])
+    policy = tmp_path / "policy.yaml"
+    policy.write_text("name: strict\nmin_ninja_score: 99\nrequired_certification: PASS\n")
+    result = runner.invoke(app, ["gate", "--results", str(res), "--policy", str(policy)])
+    assert result.exit_code == 2
+    assert "FAILED" in result.output
+
+
+def test_gate_command_passes_lenient_policy(tmp_path: Path) -> None:
+    res = tmp_path / "r.json"
+    runner.invoke(app, ["score", "--trace", TRACE, "-o", str(res), "--format", "json"])
+    policy = tmp_path / "policy.yaml"
+    policy.write_text("name: lenient\nmin_ninja_score: 1\n")
+    result = runner.invoke(app, ["gate", "--results", str(res), "--policy", str(policy)])
+    assert result.exit_code == 0
+    assert "PASSED" in result.output

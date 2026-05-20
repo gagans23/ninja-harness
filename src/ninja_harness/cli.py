@@ -14,6 +14,7 @@ from rich.table import Table
 from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
 from ninja_harness.datasets.loader import load_trace
+from ninja_harness.policy import apply_policy, load_policy
 from ninja_harness.redteam import run_all_checks
 from ninja_harness.report import (
     generate_json_report,
@@ -22,8 +23,10 @@ from ninja_harness.report import (
     generate_suite_markdown_report,
     save_report,
 )
+from ninja_harness.reporters import evaluation_to_junit, to_sarif
 from ninja_harness.runner import EvaluationRunner, SuiteRunner
-from ninja_harness.schemas import AgentRun, EvaluationResult, SuiteResult
+from ninja_harness.schemas import AgentRun, AggregateResult, EvaluationResult, SuiteResult
+from ninja_harness.statistics import aggregate_results
 
 app = typer.Typer(
     name="ninja-harness",
@@ -200,7 +203,7 @@ def redteam(
         return
 
     table = Table(
-        "Check", "Severity", "Location", "Description",
+        "Check", "Severity", "OWASP", "Location", "Description",
         title="[bold red]Red Team Findings[/]",
         box=box.ROUNDED,
         show_lines=True,
@@ -209,11 +212,13 @@ def redteam(
 
     for f in findings:
         sev = f.get("severity", "low")
+        owasp_ids = ", ".join(o["id"] for o in f.get("standards", {}).get("owasp", []))
         table.add_row(
             f.get("check", ""),
             f"[{sev_style.get(sev, '')}]{sev.upper()}[/]",
+            owasp_ids or "—",
             f.get("location", ""),
-            f.get("description", "")[:80],
+            f.get("description", "")[:70],
         )
 
     console.print(table)
@@ -231,7 +236,7 @@ def redteam(
 @app.command()
 def report(
     results: Path = typer.Option(..., help="Path to evaluation results JSON."),
-    format: str = typer.Option("markdown", help="Output format: markdown | json."),
+    format: str = typer.Option("markdown", help="Output format: markdown | json | sarif | junit."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Save report to file."),
 ) -> None:
     """Generate a formatted report from saved evaluation results."""
@@ -250,6 +255,10 @@ def report(
 
     if format == "markdown":
         content = generate_markdown_report(result)
+    elif format == "sarif":
+        content = to_sarif(result)
+    elif format == "junit":
+        content = evaluation_to_junit(result)
     else:
         content = generate_json_report(result)
 
@@ -292,6 +301,96 @@ def suite(
         console.print(f"\n[dim]Suite results saved to:[/] {output}")
 
     if suite_result.failed > 0 or suite_result.errors:
+        raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# aggregate command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def aggregate(
+    results: list[Path] = typer.Argument(..., help="Two or more EvaluationResult JSON files (repeated runs of the same task)."),
+    label: str = typer.Option("aggregate", help="Label for the aggregated task."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save AggregateResult JSON."),
+    format: str = typer.Option("rich", help="Output format: rich | json."),
+) -> None:
+    """Aggregate repeated runs into reliability statistics (pass@k, pass^k, CIs)."""
+    loaded: list[EvaluationResult] = []
+    for path in results:
+        if not path.exists():
+            console.print(f"[bold red]Error:[/] File not found: {path}")
+            raise typer.Exit(1)
+        with path.open() as f:
+            loaded.append(EvaluationResult.model_validate(json.load(f)))
+
+    agg = aggregate_results(loaded, task_label=label)
+
+    if format == "json":
+        console.print_json(agg.model_dump_json(indent=2))
+    else:
+        _render_rich_aggregate(agg)
+
+    if output:
+        save_report(agg.model_dump_json(indent=2), str(output))
+        console.print(f"\n[dim]Aggregate saved to:[/] {output}")
+
+    if agg.verdict == "UNRELIABLE":
+        raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# gate command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def gate(
+    results: Path = typer.Option(..., help="EvaluationResult JSON to gate."),
+    policy: Path = typer.Option(..., help="Policy YAML/JSON with thresholds."),
+    baseline: Path | None = typer.Option(None, help="Baseline EvaluationResult JSON for regression checks."),
+    format: str = typer.Option("rich", help="Output format: rich | json."),
+) -> None:
+    """Apply an evaluation policy as a CI gate (non-zero exit on violation)."""
+    if not results.exists():
+        console.print(f"[bold red]Error:[/] File not found: {results}")
+        raise typer.Exit(1)
+
+    with results.open() as f:
+        result = EvaluationResult.model_validate(json.load(f))
+
+    try:
+        pol = load_policy(policy)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    base = None
+    if baseline and baseline.exists():
+        with baseline.open() as f:
+            base = EvaluationResult.model_validate(json.load(f))
+
+    gate_result = apply_policy(result, pol, baseline=base)
+
+    if format == "json":
+        console.print_json(gate_result.model_dump_json(indent=2))
+    else:
+        if gate_result.passed:
+            console.print(
+                Panel(
+                    f"[bold green]✅ Gate PASSED[/] under policy '{gate_result.policy_name}'",
+                    border_style="green",
+                )
+            )
+        else:
+            lines = "\n".join(f"  • [{v.severity}] {v.rule}: {v.detail}" for v in gate_result.violations)
+            console.print(
+                Panel(
+                    f"[bold red]❌ Gate FAILED[/] under policy '{gate_result.policy_name}'\n\n{lines}",
+                    border_style="red",
+                )
+            )
+
+    if not gate_result.passed:
         raise typer.Exit(2)
 
 
@@ -395,6 +494,34 @@ def _render_rich_suite(suite: SuiteResult) -> None:
         console.print("\n[bold red]Errors:[/]")
         for e in suite.errors:
             console.print(f"  • {e.get('trace')}: {e.get('error')}")
+
+
+def _render_rich_aggregate(agg: AggregateResult) -> None:
+    s = agg.reliability
+    verdict_style = {
+        "RELIABLE": "bold green",
+        "FLAKY": "bold yellow",
+        "UNRELIABLE": "bold red",
+    }.get(agg.verdict, "white")
+
+    console.print(
+        Panel(
+            f"  Task        : [bold]{agg.task_label}[/]\n"
+            f"  Trials      : {s.trials}\n"
+            f"  Mean score  : [bold cyan]{s.mean_score:.1f}[/] "
+            f"(95% CI {s.ci_low:.1f}–{s.ci_high:.1f}, std {s.std_score:.1f})\n"
+            f"  Range       : {s.min_score:.1f} – {s.max_score:.1f}\n"
+            f"  pass@k      : {s.pass_at_k:.2f}    pass^k: [bold]{s.pass_hat_k:.2f}[/]\n"
+            f"  Consistency : {s.consistency:.2f}\n"
+            f"  Verdict     : [{verdict_style}]{agg.verdict}[/]",
+            title="[bold]Ninja Harness Reliability[/]",
+            border_style=verdict_style,
+        )
+    )
+    if agg.notes:
+        console.print("\n[bold]Notes:[/]")
+        for n in agg.notes:
+            console.print(f"  • {n}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,14 @@ import pytest
 
 from ninja_harness.schemas import AgentRun, EvaluationCase
 from ninja_harness.scoring.goal_success import GoalSuccessScorer
-from ninja_harness.scoring.judge import DeterministicJudge, EmbeddingJudge, Judge
+from ninja_harness.scoring.judge import (
+    DeterministicJudge,
+    EmbeddingJudge,
+    EnsembleJudge,
+    Judge,
+    PositionSwapJudge,
+    RubricJudge,
+)
 
 
 def test_deterministic_judge_is_a_judge() -> None:
@@ -74,3 +81,73 @@ def test_embedding_judge_raises_without_dependency() -> None:
             judge.compare("a", "b")
     else:
         pytest.skip("sentence-transformers is installed; skipping absence test.")
+
+
+# --------------------------------------------------------------------------
+# Judge combinators (v0.3)
+# --------------------------------------------------------------------------
+
+def test_rubric_judge_is_a_judge() -> None:
+    assert isinstance(RubricJudge(), Judge)
+
+
+def test_rubric_judge_breakdown() -> None:
+    judge = RubricJudge(rubric=[("relevance", 0.7), ("completeness", 0.3)])
+    score, details = judge.compare("the quick brown fox", "the quick brown fox")
+    assert score == pytest.approx(1.0)
+    assert set(details["criteria"].keys()) == {"relevance", "completeness"}
+
+
+def test_position_swap_averages_orderings() -> None:
+    judge = PositionSwapJudge(DeterministicJudge())
+    score, details = judge.compare("alpha beta", "alpha beta gamma")
+    assert details["judge"] == "position_swap"
+    assert "position_bias_delta" in details
+    assert 0.0 <= score <= 1.0
+
+
+def test_ensemble_mean() -> None:
+    class Half:
+        name = "half"
+        def compare(self, p: str, r: str) -> tuple[float, dict]:
+            return 0.5, {}
+
+    class One:
+        name = "one"
+        def compare(self, p: str, r: str) -> tuple[float, dict]:
+            return 1.0, {}
+
+    judge = EnsembleJudge([Half(), One()])
+    score, details = judge.compare("x", "y")
+    assert score == pytest.approx(0.75)
+    assert details["disagreement"] == pytest.approx(0.5)
+
+
+def test_ensemble_requires_judges() -> None:
+    with pytest.raises(ValueError):
+        EnsembleJudge([])
+
+
+def test_ensemble_min_aggregate() -> None:
+    class Half:
+        name = "half"
+        def compare(self, p: str, r: str) -> tuple[float, dict]:
+            return 0.5, {}
+
+    class One:
+        name = "one"
+        def compare(self, p: str, r: str) -> tuple[float, dict]:
+            return 1.0, {}
+
+    judge = EnsembleJudge([Half(), One()], aggregate="min")
+    score, _ = judge.compare("x", "y")
+    assert score == pytest.approx(0.5)
+
+
+def test_goal_success_with_ensemble_judge() -> None:
+    scorer = GoalSuccessScorer(judge=EnsembleJudge([DeterministicJudge(), DeterministicJudge()]))
+    run = AgentRun(agent_name="A", task="t", final_output="transformers improved")
+    case = EvaluationCase(task="t", expected_output="transformers improved")
+    result = scorer.score(run, case)
+    assert result.score == pytest.approx(1.0)
+    assert result.details["judge"] == "ensemble"

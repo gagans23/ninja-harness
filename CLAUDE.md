@@ -72,9 +72,24 @@ When adding a new adapter: implement `can_parse()` (cheap, key-presence checks) 
 `parse()` (pure, deterministic, raises `ValueError` on missing required fields), then
 register it in `adapters/__init__.py`. Add an example trace under `examples/` and tests.
 
-## v0.3 priorities
+## v0.3 (shipped)
+
+- Statistical rigor: `statistics.py` — `pass@k`, `pass^k`, mean ± 95% CI, consistency;
+  `aggregate` command + `AggregateResult`/`ReliabilityStats` schemas
+- OpenTelemetry GenAI adapter (`adapters/opentelemetry.py`) — `gen_ai.*` spans
+- Safety standards mapping (`standards.py`) — OWASP LLM Top 10 2025 + MITRE ATLAS;
+  only use accurate, verifiable IDs
+- CI reporters (`reporters/`): SARIF 2.1.0, JUnit XML, GitHub step summary
+- Policy gate (`policy.py`) + `gate` command for CI merge gating
+- Judge combinators: `RubricJudge`, `PositionSwapJudge`, `EnsembleJudge`
+
+Still no built-in LLM client — judges are user-supplied. Standards IDs must be
+real (don't invent OWASP/ATLAS identifiers). Statistics describe observed runs,
+not extrapolations — keep them honest.
+
+## v0.4 priorities
 
 - Built-in eval case dataset registry
-- CI badge generator + SARIF output
 - `ninja-harness diff` for comparing two results
 - Extend the `Judge` plug-in to the Grounding metric
+- pytest plugin; native OTLP/protobuf span ingest
