@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ninja-harness"
+version = "0.1.0"
+description = "Trace-first evals for agents that need to survive production."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [
+  { name = "Gagan Singh", email = "gagans23@github.com" },
+]
+keywords = ["ai", "agents", "evaluation", "tracing", "llm", "safety", "evals"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = [
+  "pydantic>=2.0",
+  "typer>=0.12",
+  "rich>=13.0",
+  "pyyaml>=6.0",
+  "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.4",
+  "mypy>=1.10",
+]
+
+[project.scripts]
+ninja-harness = "ninja_harness.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/gagans23/ninja-harness"
+Repository = "https://github.com/gagans23/ninja-harness"
+Issues = "https://github.com/gagans23/ninja-harness/issues"
+Documentation = "https://github.com/gagans23/ninja-harness/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ninja_harness"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

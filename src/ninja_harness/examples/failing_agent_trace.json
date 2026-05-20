@@ -1,0 +1,89 @@
+{
+  "run_id": "run-failing-001",
+  "agent_name": "DataAgent",
+  "task": "Retrieve the Q3 sales figures and compute the YoY growth rate.",
+  "final_output": "I was unable to retrieve the Q3 sales data. The database connection failed and I could not recover. Studies show that YoY growth is typically around 10-15% for this sector.",
+  "expected_output": "Q3 sales: $4.2M. YoY growth: 12.4% vs $3.73M in Q3 prior year.",
+  "steps": [
+    {
+      "step_id": "s1",
+      "agent_name": "DataAgent",
+      "step_type": "plan",
+      "output": "Plan: (1) Query the sales database for Q3 data, (2) Retrieve prior year Q3 data, (3) Compute YoY growth.",
+      "status": "completed"
+    },
+    {
+      "step_id": "s2",
+      "agent_name": "DataAgent",
+      "step_type": "action",
+      "output": "Querying sales database for Q3 figures.",
+      "status": "failed",
+      "error": "DatabaseConnectionError: Connection to sales-db timed out after 30s."
+    },
+    {
+      "step_id": "s3",
+      "agent_name": "DataAgent",
+      "step_type": "action",
+      "output": "Retrying database query with backup connection.",
+      "status": "failed",
+      "error": "DatabaseConnectionError: Backup connection also unavailable."
+    },
+    {
+      "step_id": "s4",
+      "agent_name": "DataAgent",
+      "step_type": "action",
+      "output": "Attempting fallback: querying CSV data cache.",
+      "status": "completed"
+    },
+    {
+      "step_id": "s5",
+      "agent_name": "DataAgent",
+      "step_type": "observation",
+      "output": "CSV cache is stale (last updated Q2). Cannot use for YoY computation.",
+      "status": "completed"
+    },
+    {
+      "step_id": "s6",
+      "agent_name": "DataAgent",
+      "step_type": "final",
+      "output": "Unable to complete task due to data unavailability. Returning partial result with disclaimer.",
+      "status": "completed"
+    }
+  ],
+  "tool_calls": [
+    {
+      "tool_name": "query_database",
+      "arguments": {"table": "sales", "quarter": "Q3", "year": 2024},
+      "result": null,
+      "status": "failed",
+      "error": "DatabaseConnectionError: Connection timed out."
+    },
+    {
+      "tool_name": "query_database",
+      "arguments": {"table": "sales", "quarter": "Q3", "year": 2024},
+      "result": null,
+      "status": "failed",
+      "error": "DatabaseConnectionError: Backup unavailable."
+    },
+    {
+      "tool_name": "read_csv_cache",
+      "arguments": {"file": "sales_cache.csv", "quarter": "Q3"},
+      "result": "Cache last updated: 2024-07-01. Q2 data available. Q3 data not yet cached.",
+      "status": "success"
+    }
+  ],
+  "handoffs": [],
+  "guardrail_events": [
+    {
+      "guardrail_name": "output_grounding_check",
+      "status": "triggered",
+      "message": "Final output contains ungrounded factual claim: 'Studies show that YoY growth is typically around 10-15%'.",
+      "severity": "medium"
+    }
+  ],
+  "start_time": "2024-11-01T14:00:00Z",
+  "end_time": "2024-11-01T14:01:45Z",
+  "token_usage": {"prompt_tokens": 320, "completion_tokens": 140, "total_tokens": 460},
+  "cost": 0.0023,
+  "metadata": {}
+}

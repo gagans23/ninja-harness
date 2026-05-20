@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install project with dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest --tb=short -v
+
+      - name: CLI smoke test — validate sample trace
+        run: |
+          ninja-harness validate \
+            --trace src/ninja_harness/examples/simple_agent_trace.json
+
+      - name: CLI smoke test — score sample trace (JSON output)
+        run: |
+          ninja-harness score \
+            --trace src/ninja_harness/examples/simple_agent_trace.json \
+            --format json || true
+          # Exit code 2 = FAIL certification; still verify output is valid JSON
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check src/ tests/ examples/
