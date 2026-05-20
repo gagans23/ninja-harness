@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ninja_harness.runner import EvaluationRunner
 from ninja_harness.report import generate_markdown_report
+from ninja_harness.runner import EvaluationRunner
 
 TRACE = Path("src/ninja_harness/examples/hermes_style_trace.json")
 

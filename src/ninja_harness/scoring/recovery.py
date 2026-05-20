@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
 
@@ -39,7 +37,7 @@ class RecoveryScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         failure_events: list[dict] = []
         recovered_events: list[dict] = []

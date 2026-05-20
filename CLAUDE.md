@@ -61,9 +61,20 @@ ninja-harness eval \
   --case  src/ninja_harness/examples/evaluation_case.yaml
 ```
 
-## v0.2 priorities
+## v0.2 (shipped)
 
-- Real adapters for OpenAI Agents SDK, LangGraph, Hermes, CrewAI, AutoGen
-- Async runner for parallel multi-case evaluation
-- LLM-as-judge plug-in for Goal Success and Grounding
-- YAML eval suite runner (`ninja-harness suite --suite evals/my_suite.yaml`)
+- Real adapters for OpenAI Agents SDK, LangGraph, Hermes, CrewAI, AutoGen (auto-detected)
+- `SuiteRunner` with sync + async (`asyncio`) multi-case evaluation
+- `Judge` plug-in for Goal Success (`DeterministicJudge` default, optional `EmbeddingJudge`)
+- `ninja-harness suite --suite ... [--async]` and `eval --save-baseline`
+
+When adding a new adapter: implement `can_parse()` (cheap, key-presence checks) and
+`parse()` (pure, deterministic, raises `ValueError` on missing required fields), then
+register it in `adapters/__init__.py`. Add an example trace under `examples/` and tests.
+
+## v0.3 priorities
+
+- Built-in eval case dataset registry
+- CI badge generator + SARIF output
+- `ninja-harness diff` for comparing two results
+- Extend the `Judge` plug-in to the Grounding metric

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
@@ -24,9 +23,9 @@ class StabilityScorer(BaseScorer):
         scorer = StabilityScorer(baseline_path="baselines/my_agent.json")
     """
 
-    def __init__(self, baseline_path: Optional[str] = None) -> None:
+    def __init__(self, baseline_path: str | None = None) -> None:
         self._baseline_path = baseline_path
-        self._baseline: Optional[dict] = None
+        self._baseline: dict | None = None
         if baseline_path:
             path = Path(baseline_path)
             if path.exists():
@@ -40,7 +39,7 @@ class StabilityScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         if not self._baseline:
             return self._not_applicable(

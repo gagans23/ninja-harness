@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 
-
 _EXFIL_PATTERNS = [
     re.compile(r"(?i)send(ing)?\s+(user|private|credential|password|secret|key)\s+(data\s+)?to\s+(http|ftp|ws)"),
     re.compile(r"(?i)upload(ing)?\s+(private|credential|user|sensitive)"),

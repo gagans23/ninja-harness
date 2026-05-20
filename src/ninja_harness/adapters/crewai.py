@@ -1,51 +1,119 @@
 """
-CrewAI adapter — PLACEHOLDER (v0.2).
+CrewAI adapter.
 
-Status: NOT IMPLEMENTED.
+Parses CrewAI execution output (Crew, Agent, Task, Process) into an AgentRun.
 
-This adapter will parse execution logs and traces produced by CrewAI
-(Crew, Agent, Task, Process objects).
+Expected trace shape:
 
-Expected mapping (v0.2 target):
+    {
+      "_source": "crewai",
+      "crew_name": "ResearchCrew",
+      "agents": [
+        {"role": "Researcher", "goal": "find facts"},
+        {"role": "Writer", "goal": "draft summary"}
+      ],
+      "tasks": [
+        {"description": "Research transformer efficiency",
+         "agent": "Researcher",
+         "output": "found FlashAttention, MoE...",
+         "tools_used": [
+           {"tool": "web_search", "input": {"query": "..."},
+            "output": "...", "status": "success"}
+         ]},
+        {"description": "Write summary", "agent": "Writer",
+         "output": "final summary text",
+         "delegated_from": "Researcher"}
+      ],
+      "final_output": "the crew's final result"
+    }
 
-  CrewAI concept                 → AgentRun / AgentStep field
-  ─────────────────────────────────────────────────────────────
-  crew.kickoff() result          → final_output
-  task.description               → task
-  agent.role                     → agent_name
-  task.output / agent log        → AgentStep list
-  tool invocation                → ToolCall
-  agent delegation               → Handoff
+Notes:
+- Each task maps to one or more AgentSteps.
+- tools_used entries map to ToolCall.
+- A task's "delegated_from" field maps to a Handoff.
 
-Reference:
-  https://docs.crewai.com/
-
-To contribute this adapter:
-  1. Implement can_parse() to detect CrewAI output format.
-  2. Map crew task logs to AgentStep and ToolCall.
-  3. Map agent delegation events to Handoff.
-  4. Add tests in tests/test_crewai_adapter.py.
-  5. Remove this placeholder docstring note.
+Reference: https://docs.crewai.com/
 """
 
 from __future__ import annotations
 
 from ninja_harness.adapters.base import TraceAdapter
-from ninja_harness.schemas import AgentRun
+from ninja_harness.schemas import AgentRun, AgentStep, Handoff, ToolCall
 
 
 class CrewAIAdapter(TraceAdapter):
-    """Placeholder adapter for CrewAI traces. Not yet implemented."""
+    """Parses CrewAI crew execution traces into an AgentRun."""
 
     def can_parse(self, raw: dict) -> bool:
-        return raw.get("_source") == "crewai" or (
-            "crew_name" in raw and "agents" in raw and "tasks" in raw
-        )
+        if raw.get("_source") == "crewai":
+            return True
+        return "crew_name" in raw and "tasks" in raw
 
     def parse(self, raw: dict) -> AgentRun:
-        raise NotImplementedError(
-            "CrewAIAdapter is a placeholder and not yet implemented. "
-            "This adapter is planned for v0.2. "
-            "Please convert your trace to the Ninja Harness Custom JSON format "
-            "or contribute the adapter — see docs/architecture.md."
+        crew_name = raw.get("crew_name", "Crew")
+        tasks = raw.get("tasks", [])
+
+        if "final_output" in raw:
+            final_output = str(raw["final_output"])
+        elif tasks and tasks[-1].get("output"):
+            final_output = str(tasks[-1]["output"])
+        else:
+            raise ValueError(
+                "CrewAI trace missing final output. Expected 'final_output' "
+                "or an output on the last task."
+            )
+
+        task_description = tasks[0]["description"] if tasks else raw.get("task", "")
+
+        steps: list[AgentStep] = []
+        tool_calls: list[ToolCall] = []
+        handoffs: list[Handoff] = []
+
+        for i, task in enumerate(tasks):
+            agent_role = task.get("agent", crew_name)
+
+            steps.append(
+                AgentStep(
+                    agent_name=agent_role,
+                    step_type="plan" if i == 0 else "action",
+                    input=task.get("description"),
+                    output=str(task.get("output", "")),
+                    status=task.get("status", "completed"),
+                    error=task.get("error"),
+                )
+            )
+
+            for tool in task.get("tools_used", []):
+                tool_calls.append(
+                    ToolCall(
+                        tool_name=tool.get("tool", tool.get("name", "unknown_tool")),
+                        arguments=tool.get("input", tool.get("arguments", {})),
+                        result=str(tool["output"]) if tool.get("output") is not None else None,
+                        status=tool.get("status", "success"),
+                        error=tool.get("error"),
+                    )
+                )
+
+            delegated_from = task.get("delegated_from")
+            if delegated_from:
+                handoffs.append(
+                    Handoff(
+                        source_agent=delegated_from,
+                        target_agent=agent_role,
+                        reason=task.get("delegation_reason", "CrewAI task delegation"),
+                        context_summary=task.get("description", "")[:200],
+                        expected_next_action=task.get("description", "")[:200],
+                        task_id=task.get("task_id", f"task-{i}"),
+                        trace_id=crew_name,
+                    )
+                )
+
+        return AgentRun(
+            agent_name=crew_name,
+            task=str(task_description),
+            final_output=final_output,
+            steps=steps,
+            tool_calls=tool_calls,
+            handoffs=handoffs,
+            metadata={"adapter": "crewai", "agent_count": len(raw.get("agents", []))},
         )

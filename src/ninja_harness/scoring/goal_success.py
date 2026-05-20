@@ -1,12 +1,12 @@
-"""Goal Success Score — deterministic token-overlap implementation for v0.1."""
+"""Goal Success Score — deterministic by default, judge-pluggable in v0.2."""
 
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
+from ninja_harness.scoring.judge import DeterministicJudge, Judge
 
 _PASS_THRESHOLD = 0.5
 
@@ -21,10 +21,17 @@ class GoalSuccessScorer(BaseScorer):
     """
     Measures how well the agent's final output matches the expected output.
 
-    v0.1: deterministic token-overlap (Jaccard similarity over word sets).
-    The architecture is designed so an LLM-as-judge can replace or supplement
-    this calculation in v0.2 without changing the scorer interface.
+    The comparison is delegated to a Judge (see scoring/judge.py). The default
+    is DeterministicJudge (token-overlap), which keeps scoring reproducible and
+    free of external calls. Pass a different judge — including a custom
+    LLM-as-judge — to change the comparison strategy:
+
+        scorer = GoalSuccessScorer(judge=EmbeddingJudge())
+        scorer = GoalSuccessScorer(judge=MyLLMJudge())
     """
+
+    def __init__(self, judge: Judge | None = None) -> None:
+        self._judge: Judge = judge or DeterministicJudge()
 
     @property
     def name(self) -> str:
@@ -33,7 +40,7 @@ class GoalSuccessScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         expected = None
         if case and case.expected_output:
@@ -46,50 +53,32 @@ class GoalSuccessScorer(BaseScorer):
                 "No expected_output provided; skipping goal success scoring."
             )
 
-        actual_tokens = _tokenize(run.final_output)
-        expected_tokens = _tokenize(expected)
-
-        if not expected_tokens:
+        if not _tokenize(expected):
             return self._not_applicable("expected_output contains no scoreable tokens.")
 
-        intersection = actual_tokens & expected_tokens
-        union = actual_tokens | expected_tokens
-        jaccard = len(intersection) / len(union) if union else 0.0
+        score, details = self._judge.compare(run.final_output, expected)
+        passed = score >= _PASS_THRESHOLD
 
-        # Also compute recall (coverage of expected tokens).
-        recall = len(intersection) / len(expected_tokens)
-
-        # Blend jaccard + recall; recall is more important for correctness.
-        blended = 0.4 * jaccard + 0.6 * recall
-
-        passed = blended >= _PASS_THRESHOLD
         failure_reasons = []
         recommendations = []
-
         if not passed:
-            missing = expected_tokens - actual_tokens
-            top_missing = sorted(missing)[:5]
+            expected_tokens = _tokenize(expected)
+            actual_tokens = _tokenize(run.final_output)
+            missing = sorted(expected_tokens - actual_tokens)[:5]
             failure_reasons.append(
-                f"Output covers only {recall:.0%} of expected key terms. "
-                f"Missing: {', '.join(top_missing)}"
+                f"Output diverges from expected answer (judge='{self._judge.name}', "
+                f"score={score:.2f}). Missing key terms: {', '.join(missing)}"
             )
             recommendations.append(
                 "Review whether the agent's final answer addresses all required topics. "
-                "Consider adding an LLM-as-judge check for semantic similarity (v0.2)."
+                "For semantic matching, try GoalSuccessScorer(judge=EmbeddingJudge())."
             )
 
         return MetricResult(
             name=self.name,
-            score=round(blended, 4),
+            score=score,
             passed=passed,
-            details={
-                "jaccard": round(jaccard, 4),
-                "recall": round(recall, 4),
-                "blended": round(blended, 4),
-                "actual_token_count": len(actual_tokens),
-                "expected_token_count": len(expected_tokens),
-                "matching_tokens": len(intersection),
-            },
+            details=details,
             failure_reasons=failure_reasons,
             recommendations=recommendations,
         )

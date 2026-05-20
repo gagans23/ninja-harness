@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Optional
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
@@ -33,7 +32,7 @@ class EfficiencyScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         max_steps = (case.max_steps if case and case.max_steps else _DEFAULT_MAX_STEPS)
         max_tool_calls = (

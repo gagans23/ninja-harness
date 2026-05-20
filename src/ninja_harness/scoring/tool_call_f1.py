@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult, ToolCall
 from ninja_harness.scoring.base import BaseScorer
@@ -49,7 +49,7 @@ class ToolCallF1Scorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         if not case or not case.expected_tool_calls:
             return self._not_applicable(

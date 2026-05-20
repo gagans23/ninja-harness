@@ -1,52 +1,170 @@
 """
-LangGraph adapter — PLACEHOLDER (v0.2).
+LangGraph adapter.
 
-Status: NOT IMPLEMENTED.
+Parses execution traces from LangGraph graphs (StateGraph / CompiledGraph)
+into an AgentRun.
 
-This adapter will parse execution traces / state snapshots produced by
-LangGraph graphs (StateGraph, CompiledGraph, etc.).
+Expected trace shape:
 
-Expected mapping (v0.2 target):
+    {
+      "_source": "langgraph",
+      "graph_id": "research_graph",
+      "input": {"task": "the task"},
+      "node_executions": [
+        {"node": "planner", "input": {...}, "output": {"plan": "..."}},
+        {"node": "tools",
+         "tool_calls": [
+           {"name": "web_search", "args": {"query": "..."},
+            "output": "result", "status": "success"}
+         ]},
+        {"node": "agent", "output": {"messages": [{"content": "..."}]}}
+      ],
+      "transfers": [
+        {"from": "supervisor", "to": "researcher", "reason": "...",
+         "context": "...", "next_action": "..."}
+      ],
+      "final_state": {"output": "final answer"}
+    }
 
-  LangGraph concept              → AgentRun / AgentStep field
-  ─────────────────────────────────────────────────────────────
-  graph.name                     → agent_name
-  State["task"] / initial input  → task
-  State["output"] / final node   → final_output
-  Node execution record          → AgentStep(step_type="action")
-  ToolNode invocations           → ToolCall list
-  Interrupt / transfer edge      → Handoff (source/target = node names)
-  Conditional edge outcome       → AgentStep(step_type="observation")
+Notes:
+- Conditional-edge transfers between named subgraphs/agents map to Handoff.
+- ToolNode invocations map to ToolCall.
 
-Reference:
-  https://langchain-ai.github.io/langgraph/
-
-To contribute this adapter:
-  1. Implement can_parse() (detect "langgraph" key or graph_id).
-  2. Map node execution records to AgentStep.
-  3. Map ToolNode calls to ToolCall.
-  4. Add tests in tests/test_langgraph_adapter.py.
-  5. Remove this placeholder docstring note.
+Reference: https://langchain-ai.github.io/langgraph/
 """
 
 from __future__ import annotations
 
+from typing import Any
+
 from ninja_harness.adapters.base import TraceAdapter
-from ninja_harness.schemas import AgentRun
+from ninja_harness.schemas import AgentRun, AgentStep, Handoff, ToolCall
 
 
 class LangGraphAdapter(TraceAdapter):
-    """Placeholder adapter for LangGraph traces. Not yet implemented."""
+    """Parses LangGraph execution traces into an AgentRun."""
 
     def can_parse(self, raw: dict) -> bool:
-        return raw.get("_source") == "langgraph" or (
-            "graph_id" in raw and "node_executions" in raw
-        )
+        if raw.get("_source") == "langgraph":
+            return True
+        return "node_executions" in raw and ("graph_id" in raw or "final_state" in raw)
 
     def parse(self, raw: dict) -> AgentRun:
-        raise NotImplementedError(
-            "LangGraphAdapter is a placeholder and not yet implemented. "
-            "This adapter is planned for v0.2. "
-            "Please convert your trace to the Ninja Harness Custom JSON format "
-            "or contribute the adapter — see docs/architecture.md."
+        graph_id = raw.get("graph_id", "langgraph")
+
+        task = self._extract_task(raw.get("input", {}))
+        final_output = self._extract_final_output(raw.get("final_state", {}))
+        if final_output is None:
+            raise ValueError(
+                "LangGraph trace missing a final output. Expected "
+                "final_state.output (or final_state.messages)."
+            )
+
+        steps: list[AgentStep] = []
+        tool_calls: list[ToolCall] = []
+
+        for node_exec in raw.get("node_executions", []):
+            node_name = node_exec.get("node", "node")
+
+            if "tool_calls" in node_exec:
+                for tc in node_exec["tool_calls"]:
+                    tool_calls.append(
+                        ToolCall(
+                            tool_name=tc.get("name", "unknown_tool"),
+                            arguments=tc.get("args", tc.get("arguments", {})),
+                            result=str(tc["output"]) if tc.get("output") is not None else None,
+                            status=tc.get("status", "success"),
+                            error=tc.get("error"),
+                        )
+                    )
+                steps.append(
+                    AgentStep(
+                        agent_name=node_name,
+                        step_type="action",
+                        output=f"ToolNode executed {len(node_exec['tool_calls'])} tool call(s)",
+                        status="completed",
+                    )
+                )
+            else:
+                output = self._stringify_node_output(node_exec.get("output"))
+                steps.append(
+                    AgentStep(
+                        agent_name=node_name,
+                        step_type=self._infer_step_type(node_name),
+                        input=self._stringify_node_output(node_exec.get("input")),
+                        output=output,
+                        status=node_exec.get("status", "completed"),
+                        error=node_exec.get("error"),
+                    )
+                )
+
+        handoffs = [self._parse_transfer(t, raw) for t in raw.get("transfers", [])]
+
+        return AgentRun(
+            agent_name=graph_id,
+            task=task,
+            final_output=final_output,
+            steps=steps,
+            tool_calls=tool_calls,
+            handoffs=handoffs,
+            metadata={"adapter": "langgraph"},
+        )
+
+    def _extract_task(self, input_state: Any) -> str:
+        if isinstance(input_state, dict):
+            for key in ("task", "input", "query", "question"):
+                if key in input_state:
+                    return str(input_state[key])
+            if "messages" in input_state and input_state["messages"]:
+                first = input_state["messages"][0]
+                if isinstance(first, dict):
+                    return str(first.get("content", ""))
+        return str(input_state) if input_state else ""
+
+    def _extract_final_output(self, final_state: Any) -> str | None:
+        if isinstance(final_state, dict):
+            for key in ("output", "answer", "result", "final_output"):
+                if key in final_state:
+                    return str(final_state[key])
+            if "messages" in final_state and final_state["messages"]:
+                last = final_state["messages"][-1]
+                if isinstance(last, dict):
+                    return str(last.get("content", ""))
+        elif final_state:
+            return str(final_state)
+        return None
+
+    def _stringify_node_output(self, output: Any) -> str | None:
+        if output is None:
+            return None
+        if isinstance(output, dict):
+            if "messages" in output and output["messages"]:
+                last = output["messages"][-1]
+                if isinstance(last, dict):
+                    return str(last.get("content", ""))
+            for key in ("output", "plan", "result", "answer"):
+                if key in output:
+                    return str(output[key])
+            return str(output)
+        return str(output)
+
+    def _infer_step_type(self, node_name: str) -> str:
+        lowered = node_name.lower()
+        if "plan" in lowered:
+            return "plan"
+        if "tool" in lowered:
+            return "action"
+        if "observ" in lowered or "retriev" in lowered:
+            return "observation"
+        return "action"
+
+    def _parse_transfer(self, t: dict, raw: dict) -> Handoff:
+        return Handoff(
+            source_agent=t.get("from", ""),
+            target_agent=t.get("to", ""),
+            reason=t.get("reason", ""),
+            context_summary=t.get("context", t.get("context_summary", "")),
+            expected_next_action=t.get("next_action", t.get("expected_next_action", "")),
+            task_id=raw.get("task_id"),
+            trace_id=raw.get("graph_id"),
         )

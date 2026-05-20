@@ -183,13 +183,34 @@ ninja-harness report --results results.json --format markdown
 | Framework | Status |
 |---|---|
 | Custom JSON | ✅ Full support |
-| OpenAI Agents SDK | 🔲 Placeholder (v0.2) |
-| LangGraph | 🔲 Placeholder (v0.2) |
-| Hermes multi-agent | 🔲 Placeholder (v0.2) |
-| CrewAI | 🔲 Placeholder (v0.2) |
-| AutoGen | 🔲 Placeholder (v0.2) |
+| OpenAI Agents SDK | ✅ Supported (v0.2) |
+| LangGraph | ✅ Supported (v0.2) |
+| Hermes multi-agent | ✅ Supported (v0.2) |
+| CrewAI | ✅ Supported (v0.2) |
+| AutoGen | ✅ Supported (v0.2) |
 
-Framework adapters transform native traces into Ninja Harness's `AgentRun` schema. See [docs/architecture.md](docs/architecture.md).
+Framework adapters transform native traces into Ninja Harness's `AgentRun` schema. The correct adapter is auto-detected from the trace shape (or an explicit `"_source"` marker). Each adapter ships with an example trace under `src/ninja_harness/examples/`. See [docs/architecture.md](docs/architecture.md).
+
+### Run a multi-framework suite
+
+```bash
+ninja-harness suite --suite src/ninja_harness/examples/example_suite.yaml --async
+```
+
+A suite evaluates many trace/case pairs in one run and reports pass rate and average score. Use `--async` to evaluate cases concurrently.
+
+### Pluggable Goal Success judge
+
+Goal Success uses a deterministic token-overlap judge by default (no API calls). Swap in semantic similarity or your own LLM-as-judge:
+
+```python
+from ninja_harness.runner import EvaluationRunner
+from ninja_harness.scoring.judge import EmbeddingJudge  # pip install ninja-harness[semantic]
+
+runner = EvaluationRunner(judge=EmbeddingJudge())
+```
+
+Ninja Harness ships no built-in LLM API client — you provide the model. This keeps the core library free of network calls and API keys.
 
 ---
 
@@ -197,9 +218,9 @@ Framework adapters transform native traces into Ninja Harness's `AgentRun` schem
 
 See [docs/roadmap.md](docs/roadmap.md) for full details.
 
-**v0.2** — Real framework adapters, async runner, YAML eval suites
-**v0.3** — LLM-as-judge integrations, dataset registry, CI badge
-**v0.4** — Multi-run aggregation, regression dashboards, SARIF output
+**v0.2** ✅ — Real framework adapters, async + suite runner, judge plug-in interface, baseline save
+**v0.3** — Built-in dataset registry, CI badge, SARIF output, `diff` command
+**v0.4** — Multi-run aggregation, regression dashboards
 **v1.0** — Stable API, governance report templates, community plugins
 
 ---

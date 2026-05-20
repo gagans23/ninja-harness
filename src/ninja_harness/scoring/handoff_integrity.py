@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ninja_harness.schemas import AgentRun, EvaluationCase, Handoff, MetricResult
 from ninja_harness.scoring.base import BaseScorer
 
@@ -74,7 +72,7 @@ class HandoffIntegrityScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         if not run.handoffs:
             return self._not_applicable("No handoffs in this run; metric not applicable.")

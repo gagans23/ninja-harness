@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 
@@ -20,7 +19,7 @@ class BaseScorer(ABC):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         """
         Evaluate the metric against *run* (and optionally *case*).

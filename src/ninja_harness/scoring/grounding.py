@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
@@ -49,7 +48,7 @@ class GroundingScorer(BaseScorer):
     def score(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> MetricResult:
         references: list[str] = []
         if case and case.references:

@@ -45,7 +45,14 @@ Metrics marked "N/A" (score = -1.0) are excluded from the weighted average. Thei
 
 **When N/A**: No `expected_output` in the eval case or the run.
 
-**v0.2 plan**: LLM-as-judge plug-in for semantic similarity.
+**Judge plug-in (v0.2)**: The comparison is delegated to a `Judge` (see `scoring/judge.py`). The default `DeterministicJudge` reproduces the formula above. Swap in `EmbeddingJudge` (cosine similarity over sentence-transformer embeddings, `pip install ninja-harness[semantic]`) or your own LLM-as-judge:
+
+```python
+GoalSuccessScorer(judge=EmbeddingJudge())
+EvaluationRunner(judge=MyLLMJudge())
+```
+
+Ninja Harness ships no built-in LLM API client — you provide the model.
 
 ---
 

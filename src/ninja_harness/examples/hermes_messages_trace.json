@@ -1,0 +1,25 @@
+{
+  "_source": "hermes",
+  "agent_name": "OrchestratorAgent",
+  "task": "What is the weather in Paris today, and should I bring an umbrella?",
+  "task_id": "task-weather-001",
+  "trace_id": "trace-hermes-msg-001",
+  "messages": [
+    {"role": "system", "content": "You are a helpful multi-agent assistant."},
+    {"role": "user", "content": "What is the weather in Paris today, and should I bring an umbrella?"},
+    {
+      "role": "assistant",
+      "agent": "OrchestratorAgent",
+      "content": "I'll check the weather in Paris.",
+      "tool_calls": [
+        {"function": {"name": "get_weather", "arguments": "{\"city\": \"Paris\", \"date\": \"today\"}"}}
+      ]
+    },
+    {"role": "tool", "name": "get_weather", "content": "Paris: 14°C, 80% chance of rain in the afternoon, winds 15 km/h."},
+    {
+      "role": "assistant",
+      "agent": "WeatherAdvisorAgent",
+      "content": "Today in Paris it's 14°C with an 80% chance of afternoon rain. Yes — bring an umbrella, especially if you'll be out in the afternoon."
+    }
+  ]
+}

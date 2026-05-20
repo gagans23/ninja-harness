@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ninja-harness"
-version = "0.1.0"
+version = "0.2.0"
 description = "Trace-first evals for agents that need to survive production."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -38,6 +38,11 @@ dev = [
   "pytest-cov>=5.0",
   "ruff>=0.4",
   "mypy>=1.10",
+]
+# Optional semantic similarity judge (EmbeddingJudge). Heavy dependency,
+# kept out of the core install. Used only when explicitly opted into.
+semantic = [
+  "sentence-transformers>=2.2",
 ]
 
 [project.scripts]

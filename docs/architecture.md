@@ -142,3 +142,33 @@ Red-team detectors live in `src/ninja_harness/redteam/`. They scan trace text fi
 - **Additive** — add new detectors by subclassing (no base class required; ducks-type check only)
 
 The `run_all_checks(run_dict)` function in `redteam/__init__.py` is the single entry point for the CLI.
+
+---
+
+## Suite Runner (v0.2)
+
+`SuiteRunner` (in `runner.py`) evaluates a collection of trace/case pairs defined in a `SuiteSpec` (loaded from YAML/JSON). Relative paths inside the suite file are resolved against the suite file's directory.
+
+- `run_suite(spec)` — synchronous, sequential
+- `run_suite_async(spec, concurrency=N)` — concurrent via an `asyncio.Semaphore`-bounded worker pool; sync scoring runs in threads via `asyncio.to_thread`
+- Failures in individual cases are collected into `SuiteResult.errors` rather than aborting the whole suite
+
+`SuiteResult` exposes derived properties: `total`, `passed`, `warned`, `failed`, `pass_rate`, `average_score`.
+
+---
+
+## Judge Plug-in (v0.2)
+
+The `Judge` protocol (in `scoring/judge.py`) abstracts prediction-vs-reference comparison for Goal Success:
+
+```python
+class Judge(Protocol):
+    name: str
+    def compare(self, prediction: str, reference: str) -> tuple[float, dict]: ...
+```
+
+- `DeterministicJudge` — default, token-overlap, no external calls
+- `EmbeddingJudge` — optional cosine similarity (lazy-imports sentence-transformers; raises a clear `ImportError` if the `[semantic]` extra is not installed)
+- Custom judges (e.g. an LLM-as-judge) implement the protocol and are injected via `GoalSuccessScorer(judge=...)` or `EvaluationRunner(judge=...)`
+
+The core library makes no network calls — any LLM client is supplied by the user.

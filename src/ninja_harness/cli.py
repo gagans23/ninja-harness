@@ -3,23 +3,27 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich import box
 
 from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
-from ninja_harness.datasets.loader import load_eval_case, load_trace
+from ninja_harness.datasets.loader import load_trace
 from ninja_harness.redteam import run_all_checks
-from ninja_harness.report import generate_json_report, generate_markdown_report, save_report
-from ninja_harness.runner import EvaluationRunner
-from ninja_harness.schemas import AgentRun, EvaluationResult, MetricResult
+from ninja_harness.report import (
+    generate_json_report,
+    generate_markdown_report,
+    generate_suite_json_report,
+    generate_suite_markdown_report,
+    save_report,
+)
+from ninja_harness.runner import EvaluationRunner, SuiteRunner
+from ninja_harness.schemas import AgentRun, EvaluationResult, SuiteResult
 
 app = typer.Typer(
     name="ninja-harness",
@@ -41,7 +45,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None, "--version", "-V", callback=_version_callback, is_eager=True,
         help="Show version and exit.",
     ),
@@ -56,9 +60,12 @@ def main(
 @app.command()
 def eval(
     trace: Path = typer.Option(..., help="Path to agent trace JSON file."),
-    case: Optional[Path] = typer.Option(None, help="Path to evaluation case YAML/JSON."),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Save JSON results to file."),
-    baseline: Optional[Path] = typer.Option(None, help="Path to baseline results JSON for stability scoring."),
+    case: Path | None = typer.Option(None, help="Path to evaluation case YAML/JSON."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save JSON results to file."),
+    baseline: Path | None = typer.Option(None, help="Path to baseline results JSON for stability scoring."),
+    save_baseline: Path | None = typer.Option(
+        None, help="Save this run's results as a baseline JSON for future stability comparison."
+    ),
     format: str = typer.Option("rich", help="Output format: rich | json | markdown."),
 ) -> None:
     """Evaluate an agent trace against an optional evaluation case."""
@@ -81,6 +88,10 @@ def eval(
         save_report(generate_json_report(result), str(output))
         console.print(f"\n[dim]Results saved to:[/] {output}")
 
+    if save_baseline:
+        save_report(generate_json_report(result), str(save_baseline))
+        console.print(f"[dim]Baseline saved to:[/] {save_baseline}")
+
     if result.certification == "FAIL":
         raise typer.Exit(2)
 
@@ -92,7 +103,7 @@ def eval(
 @app.command()
 def score(
     trace: Path = typer.Option(..., help="Path to agent trace JSON file."),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Save JSON results to file."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save JSON results to file."),
     format: str = typer.Option("rich", help="Output format: rich | json | markdown."),
 ) -> None:
     """Score a trace without an evaluation case (standalone mode)."""
@@ -221,7 +232,7 @@ def redteam(
 def report(
     results: Path = typer.Option(..., help="Path to evaluation results JSON."),
     format: str = typer.Option("markdown", help="Output format: markdown | json."),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Save report to file."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save report to file."),
 ) -> None:
     """Generate a formatted report from saved evaluation results."""
     if not results.exists():
@@ -250,10 +261,45 @@ def report(
 
 
 # ---------------------------------------------------------------------------
+# suite command
+# ---------------------------------------------------------------------------
+
+@app.command()
+def suite(
+    suite: Path = typer.Option(..., help="Path to a suite YAML/JSON file."),
+    use_async: bool = typer.Option(False, "--async", help="Evaluate cases concurrently."),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save suite JSON results."),
+    format: str = typer.Option("rich", help="Output format: rich | json | markdown."),
+) -> None:
+    """Run an evaluation suite over multiple trace/case pairs."""
+    runner = SuiteRunner()
+
+    try:
+        suite_result = runner.run_suite_from_file(suite, use_async=use_async)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    if format == "json":
+        console.print_json(generate_suite_json_report(suite_result))
+    elif format == "markdown":
+        console.print(generate_suite_markdown_report(suite_result))
+    else:
+        _render_rich_suite(suite_result)
+
+    if output:
+        save_report(generate_suite_json_report(suite_result), str(output))
+        console.print(f"\n[dim]Suite results saved to:[/] {output}")
+
+    if suite_result.failed > 0 or suite_result.errors:
+        raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
 # Rich rendering helpers
 # ---------------------------------------------------------------------------
 
-def _render_rich_result(result: EvaluationResult, run: Optional[AgentRun] = None) -> None:
+def _render_rich_result(result: EvaluationResult, run: AgentRun | None = None) -> None:
     cert_style = _CERT_STYLE.get(result.certification, "white")
     cert_emoji = _CERT_EMOJI.get(result.certification, "")
 
@@ -310,6 +356,45 @@ def _render_rich_result(result: EvaluationResult, run: Optional[AgentRun] = None
         console.print("\n[bold yellow]Recommended Fixes:[/]")
         for fix in result.recommended_fixes:
             console.print(f"  → {fix}")
+
+
+def _render_rich_suite(suite: SuiteResult) -> None:
+    pass_style = "green" if suite.pass_rate >= 0.8 else ("yellow" if suite.pass_rate >= 0.5 else "red")
+
+    console.print(
+        Panel(
+            f"  Suite        : [bold]{suite.name}[/]\n"
+            f"  Cases        : {suite.total}\n"
+            f"  Passed       : [green]{suite.passed}[/]   "
+            f"Warned: [yellow]{suite.warned}[/]   "
+            f"Failed: [red]{suite.failed}[/]   "
+            f"Errors: [red]{len(suite.errors)}[/]\n"
+            f"  Pass rate    : [{pass_style}]{suite.pass_rate:.0%}[/]\n"
+            f"  Avg score    : [bold cyan]{suite.average_score:.1f} / 100[/]",
+            title="[bold]Ninja Harness Suite[/]",
+            border_style=pass_style,
+        )
+    )
+
+    table = Table(
+        "Run ID", "Score", "Grade", "Certification",
+        box=box.SIMPLE_HEAVY,
+        title="Suite Cases",
+    )
+    for r in suite.results:
+        cert_style = _CERT_STYLE.get(r.certification, "white")
+        table.add_row(
+            r.run_id,
+            f"{r.ninja_score:.1f}",
+            r.grade,
+            f"[{cert_style}]{r.certification}[/]",
+        )
+    console.print(table)
+
+    if suite.errors:
+        console.print("\n[bold red]Errors:[/]")
+        for e in suite.errors:
+            console.print(f"  • {e.get('trace')}: {e.get('error')}")
 
 
 if __name__ == "__main__":

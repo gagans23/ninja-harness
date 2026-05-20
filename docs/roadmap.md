@@ -18,20 +18,21 @@
 
 ---
 
-## v0.2 — Framework Adapters + Async Runner
+## v0.2 — Framework Adapters + Async Runner ✅
 
-**Target**: Full adapter support for major frameworks.
+**Status**: Shipped. Full adapter support for major frameworks.
 
-- [ ] **OpenAI Agents SDK adapter** — parse `Runner`, `Agent`, `handoff`, `function_tool` traces
-- [ ] **LangGraph adapter** — parse `StateGraph` node execution records and `ToolNode` calls
-- [ ] **Hermes adapter** — parse multi-agent message arrays with function calls
-- [ ] **CrewAI adapter** — parse Crew task logs and agent delegation events
-- [ ] **AutoGen adapter** — parse chat history and function call blocks
-- [ ] Async evaluation runner (`asyncio`) for parallel multi-case execution
-- [ ] YAML eval suite runner: `ninja-harness suite --suite evals/my_suite.yaml`
-- [ ] LLM-as-judge plug-in interface for Goal Success and Grounding
-- [ ] `--baseline` automatic saving after first run
-- [ ] Improve goal success with semantic similarity option (sentence-transformers, no API key required)
+- [x] **OpenAI Agents SDK adapter** — parses `RunResult` items (`message_output_item`, `tool_call_item`, `handoff_output_item`) and usage
+- [x] **LangGraph adapter** — parses node execution records, `ToolNode` calls, and conditional-edge transfers
+- [x] **Hermes adapter** — parses multi-agent message arrays with function calls; infers handoffs from agent name changes
+- [x] **CrewAI adapter** — parses Crew task logs, `tools_used`, and `delegated_from` delegation events
+- [x] **AutoGen adapter** — parses chat history, function call blocks, and group-chat turn transfers
+- [x] Adapter auto-detection from trace shape or `"_source"` marker
+- [x] Async evaluation runner (`asyncio` worker pool) for concurrent multi-case execution
+- [x] YAML eval suite runner: `ninja-harness suite --suite evals/my_suite.yaml [--async]`
+- [x] `Judge` plug-in interface for Goal Success (`DeterministicJudge` default, `EmbeddingJudge` optional)
+- [x] `--save-baseline` option on `eval` for stability comparison
+- [x] Optional semantic similarity via `pip install ninja-harness[semantic]` (sentence-transformers, no API key)
 
 ---
 
@@ -41,6 +42,7 @@
 - [ ] CI badge generator (`ninja-harness badge --results results.json`)
 - [ ] SARIF output for GitHub Advanced Security integration
 - [ ] `ninja-harness diff` — compare two EvaluationResult JSON files
+- [ ] Judge plug-in extended to the Grounding metric
 - [ ] Per-metric pass thresholds configurable in eval case YAML
 - [ ] `pytest` plugin: `pytest --ninja-harness-trace trace.json`
 - [ ] OpenTelemetry trace ingest (auto-convert OTEL spans to AgentRun)

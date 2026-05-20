@@ -1,0 +1,26 @@
+name: "Ninja Harness Example Suite"
+description: "Evaluates traces across multiple frameworks in one run."
+
+# Paths are resolved relative to this file's directory.
+cases:
+  - name: "Custom JSON — research agent"
+    trace: "simple_agent_trace.json"
+    case: "evaluation_case.yaml"
+
+  - name: "Hermes — multi-agent research"
+    trace: "hermes_style_trace.json"
+
+  - name: "OpenAI Agents SDK — billing triage"
+    trace: "openai_agents_trace.json"
+
+  - name: "LangGraph — population comparison"
+    trace: "langgraph_trace.json"
+
+  - name: "CrewAI — RAG research crew"
+    trace: "crewai_trace.json"
+
+  - name: "AutoGen — compound interest"
+    trace: "autogen_trace.json"
+
+  - name: "Failing agent — DB outage"
+    trace: "failing_agent_trace.json"

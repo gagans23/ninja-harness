@@ -1,53 +1,170 @@
 """
-AutoGen adapter — PLACEHOLDER (v0.2).
+AutoGen adapter.
 
-Status: NOT IMPLEMENTED.
+Parses Microsoft AutoGen conversation traces (AssistantAgent, UserProxyAgent,
+GroupChatManager) into an AgentRun.
 
-This adapter will parse conversation traces produced by Microsoft AutoGen
-(AssistantAgent, UserProxyAgent, GroupChatManager, etc.).
+Expected trace shape:
 
-Expected mapping (v0.2 target):
+    {
+      "_source": "autogen",
+      "task": "the initial request",
+      "chat_history": [
+        {"name": "user_proxy", "role": "user", "content": "the task"},
+        {"name": "assistant", "role": "assistant", "content": "...",
+         "tool_calls": [
+           {"function": {"name": "calculator", "arguments": {"expr": "2+2"}}}
+         ]},
+        {"name": "user_proxy", "role": "tool", "content": "4",
+         "tool_name": "calculator"},
+        {"name": "assistant", "role": "assistant", "content": "The answer is 4."}
+      ]
+    }
 
-  AutoGen concept                → AgentRun / AgentStep field
-  ─────────────────────────────────────────────────────────────
-  initial_message content        → task
-  last assistant message         → final_output
-  agent.name                     → agent_name
-  message exchange records       → AgentStep list
-  function_call in messages      → ToolCall
-  agent-to-agent messages        → Handoff (source/target = agent names)
+Notes:
+- Each chat message maps to an AgentStep.
+- function/tool calls in messages map to ToolCall.
+- Messages flowing between distinct agent names map to Handoff (group chat).
 
-Reference:
-  https://microsoft.github.io/autogen/
-
-To contribute this adapter:
-  1. Implement can_parse() to detect AutoGen chat history format.
-  2. Parse message histories into AgentStep sequences.
-  3. Extract function_call blocks as ToolCall entries.
-  4. Map agent routing messages to Handoff.
-  5. Add tests in tests/test_autogen_adapter.py.
-  6. Remove this placeholder docstring note.
+Reference: https://microsoft.github.io/autogen/
 """
 
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from ninja_harness.adapters.base import TraceAdapter
-from ninja_harness.schemas import AgentRun
+from ninja_harness.schemas import AgentRun, AgentStep, Handoff, ToolCall
 
 
 class AutoGenAdapter(TraceAdapter):
-    """Placeholder adapter for AutoGen conversation traces. Not yet implemented."""
+    """Parses AutoGen conversation traces into an AgentRun."""
 
     def can_parse(self, raw: dict) -> bool:
-        return raw.get("_source") == "autogen" or (
-            "chat_history" in raw
-            and isinstance(raw.get("chat_history"), list)
-        )
+        if raw.get("_source") == "autogen":
+            return True
+        return "chat_history" in raw and isinstance(raw.get("chat_history"), list)
 
     def parse(self, raw: dict) -> AgentRun:
-        raise NotImplementedError(
-            "AutoGenAdapter is a placeholder and not yet implemented. "
-            "This adapter is planned for v0.2. "
-            "Please convert your trace to the Ninja Harness Custom JSON format "
-            "or contribute the adapter — see docs/architecture.md."
+        history = raw.get("chat_history", [])
+        if not history:
+            raise ValueError("AutoGen trace has no chat_history to parse.")
+
+        task = raw.get("task") or self._first_user_content(history)
+
+        steps: list[AgentStep] = []
+        tool_calls: list[ToolCall] = []
+        handoffs: list[Handoff] = []
+
+        final_output = ""
+        last_assistant_name: str | None = None
+        last_assistant_content = ""
+
+        for msg in history:
+            name = msg.get("name", "agent")
+            role = msg.get("role", "assistant")
+            content = msg.get("content") or ""
+
+            if role == "tool" or msg.get("tool_responses"):
+                tool_name = msg.get("tool_name", "unknown_tool")
+                for tc in reversed(tool_calls):
+                    if tc.tool_name == tool_name and tc.result is None:
+                        tc.result = str(content)
+                        break
+                steps.append(
+                    AgentStep(
+                        agent_name=name,
+                        step_type="observation",
+                        output=str(content),
+                        status="completed",
+                    )
+                )
+                continue
+
+            if role == "user":
+                steps.append(
+                    AgentStep(
+                        agent_name=name,
+                        step_type="plan",
+                        input=content,
+                        status="completed",
+                    )
+                )
+                continue
+
+            # assistant message
+            if content:
+                final_output = content
+
+            if last_assistant_name is not None and name != last_assistant_name:
+                handoffs.append(
+                    Handoff(
+                        source_agent=last_assistant_name,
+                        target_agent=name,
+                        reason=msg.get("handoff_reason", "AutoGen agent turn transfer"),
+                        context_summary=last_assistant_content[:200],
+                        expected_next_action=content[:200],
+                        task_id=raw.get("task_id"),
+                        trace_id=raw.get("trace_id"),
+                    )
+                )
+                steps.append(
+                    AgentStep(
+                        agent_name=last_assistant_name,
+                        step_type="handoff",
+                        output=f"Turn passed to {name}",
+                        status="completed",
+                    )
+                )
+
+            steps.append(
+                AgentStep(
+                    agent_name=name,
+                    step_type="action",
+                    output=content,
+                    status="completed",
+                )
+            )
+
+            for tc in msg.get("tool_calls", []):
+                fn = tc.get("function", tc)
+                tool_calls.append(
+                    ToolCall(
+                        tool_name=fn.get("name", "unknown_tool"),
+                        arguments=self._parse_arguments(fn.get("arguments", {})),
+                        status="success",
+                    )
+                )
+
+            last_assistant_name = name
+            last_assistant_content = content
+
+        agent_name = raw.get("agent_name") or last_assistant_name or "AutoGenAgent"
+
+        return AgentRun(
+            agent_name=agent_name,
+            task=task,
+            final_output=final_output,
+            steps=steps,
+            tool_calls=tool_calls,
+            handoffs=handoffs,
+            metadata={"adapter": "autogen"},
         )
+
+    def _first_user_content(self, history: list[dict]) -> str:
+        for m in history:
+            if m.get("role") == "user":
+                return str(m.get("content", ""))
+        return str(history[0].get("content", "")) if history else ""
+
+    def _parse_arguments(self, args: Any) -> dict:
+        if isinstance(args, dict):
+            return args
+        if isinstance(args, str):
+            try:
+                parsed = json.loads(args)
+                return parsed if isinstance(parsed, dict) else {"_raw": args}
+            except json.JSONDecodeError:
+                return {"_raw": args}
+        return {}

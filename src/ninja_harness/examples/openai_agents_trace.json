@@ -1,0 +1,52 @@
+{
+  "_source": "openai_agents_sdk",
+  "agent": {"name": "TriageAgent"},
+  "input": "I was double charged for my subscription this month. Can you help?",
+  "final_output": "I've confirmed a duplicate charge of $20 on 2024-11-03 and issued a refund to your original payment method. You should see it within 5-7 business days.",
+  "task_id": "task-billing-001",
+  "trace_id": "trace-oai-001",
+  "new_items": [
+    {
+      "type": "message_output_item",
+      "agent": "TriageAgent",
+      "raw_item": {"content": "This looks like a billing issue. Routing to the BillingAgent."}
+    },
+    {
+      "type": "handoff_output_item",
+      "source_agent": "TriageAgent",
+      "target_agent": "BillingAgent",
+      "reason": "Customer reports a duplicate charge; billing specialist required.",
+      "context_summary": "Customer was double charged for their monthly subscription.",
+      "expected_next_action": "Look up recent charges and issue a refund if duplicated."
+    },
+    {
+      "type": "tool_call_item",
+      "agent": "BillingAgent",
+      "raw_item": {"name": "lookup_charges", "arguments": {"customer_id": "cust-8842", "period": "current_month"}}
+    },
+    {
+      "type": "tool_call_output_item",
+      "agent": "BillingAgent",
+      "output": "Two charges found: $20 on 2024-11-03 and $20 on 2024-11-03 (duplicate)."
+    },
+    {
+      "type": "tool_call_item",
+      "agent": "BillingAgent",
+      "raw_item": {"name": "issue_refund", "arguments": {"customer_id": "cust-8842", "amount": 20.0, "reason": "duplicate_charge"}}
+    },
+    {
+      "type": "tool_call_output_item",
+      "agent": "BillingAgent",
+      "output": "Refund of $20.00 issued successfully. Reference: rfnd-55120."
+    },
+    {
+      "type": "message_output_item",
+      "agent": "BillingAgent",
+      "raw_item": {"content": "Refund processed. Informing the customer."}
+    }
+  ],
+  "guardrail_results": [
+    {"name": "pii_output_guard", "tripwire_triggered": false, "output_info": "No PII leakage detected."}
+  ],
+  "usage": {"input_tokens": 540, "output_tokens": 180, "total_tokens": 720}
+}

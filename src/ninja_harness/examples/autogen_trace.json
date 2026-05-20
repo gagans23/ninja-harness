@@ -1,0 +1,23 @@
+{
+  "_source": "autogen",
+  "task": "Calculate the compound interest on $1000 at 5% annual rate over 3 years.",
+  "task_id": "task-finance-001",
+  "trace_id": "trace-autogen-001",
+  "chat_history": [
+    {"name": "user_proxy", "role": "user", "content": "Calculate the compound interest on $1000 at 5% annual rate over 3 years."},
+    {
+      "name": "assistant",
+      "role": "assistant",
+      "content": "I'll compute compound interest: A = P(1 + r)^t.",
+      "tool_calls": [
+        {"function": {"name": "calculator", "arguments": {"expression": "1000 * (1.05 ** 3)"}}}
+      ]
+    },
+    {"name": "user_proxy", "role": "tool", "tool_name": "calculator", "content": "1157.625"},
+    {
+      "name": "assistant",
+      "role": "assistant",
+      "content": "The future value is $1157.63, so the compound interest earned over 3 years is $157.63."
+    }
+  ]
+}

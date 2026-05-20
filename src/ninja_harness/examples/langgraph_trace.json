@@ -1,0 +1,34 @@
+{
+  "_source": "langgraph",
+  "graph_id": "research_graph",
+  "input": {"task": "Find the population of Tokyo and compare it to New York City."},
+  "node_executions": [
+    {
+      "node": "planner",
+      "input": {"task": "Find the population of Tokyo and compare it to New York City."},
+      "output": {"plan": "1. Look up Tokyo population. 2. Look up NYC population. 3. Compare."}
+    },
+    {
+      "node": "tools",
+      "tool_calls": [
+        {"name": "wiki_lookup", "args": {"entity": "Tokyo", "field": "population"}, "output": "Tokyo metropolitan population: ~14 million (city proper), ~37 million (greater area).", "status": "success"}
+      ]
+    },
+    {
+      "node": "tools",
+      "tool_calls": [
+        {"name": "wiki_lookup", "args": {"entity": "New York City", "field": "population"}, "output": "New York City population: ~8.3 million (city proper), ~19 million (metro area).", "status": "success"}
+      ]
+    },
+    {
+      "node": "agent",
+      "output": {"messages": [{"role": "assistant", "content": "Comparison complete."}]}
+    }
+  ],
+  "transfers": [
+    {"from": "planner", "to": "researcher", "reason": "Plan ready; execute lookups.", "context": "Need Tokyo and NYC population figures.", "next_action": "Run wiki_lookup for both cities."}
+  ],
+  "final_state": {
+    "output": "Tokyo's city-proper population (~14 million) is roughly 1.7x that of New York City (~8.3 million). Including metro areas, Greater Tokyo (~37 million) is about double New York's metro (~19 million)."
+  }
+}

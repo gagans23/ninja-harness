@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ninja_harness.certification import compute_certification, compute_grade
 from ninja_harness.schemas import (
     AgentRun,
@@ -15,6 +13,7 @@ from ninja_harness.scoring.efficiency import EfficiencyScorer
 from ninja_harness.scoring.goal_success import GoalSuccessScorer
 from ninja_harness.scoring.grounding import GroundingScorer
 from ninja_harness.scoring.handoff_integrity import HandoffIntegrityScorer
+from ninja_harness.scoring.judge import Judge
 from ninja_harness.scoring.recovery import RecoveryScorer
 from ninja_harness.scoring.safety import SafetyScorer
 from ninja_harness.scoring.stability import StabilityScorer
@@ -46,10 +45,11 @@ class NinjaScoreAggregator:
 
     def __init__(
         self,
-        baseline_path: Optional[str] = None,
+        baseline_path: str | None = None,
+        judge: Judge | None = None,
     ) -> None:
         self._scorers = [
-            GoalSuccessScorer(),
+            GoalSuccessScorer(judge=judge),
             ToolCallF1Scorer(),
             HandoffIntegrityScorer(),
             GroundingScorer(),
@@ -62,7 +62,7 @@ class NinjaScoreAggregator:
     def evaluate(
         self,
         run: AgentRun,
-        case: Optional[EvaluationCase] = None,
+        case: EvaluationCase | None = None,
     ) -> EvaluationResult:
         metric_results: list[MetricResult] = []
         for scorer in self._scorers:

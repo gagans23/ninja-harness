@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from ninja_harness.cli import app
@@ -12,6 +11,8 @@ from ninja_harness.cli import app
 TRACE = str(Path("src/ninja_harness/examples/simple_agent_trace.json"))
 CASE = str(Path("src/ninja_harness/examples/evaluation_case.yaml"))
 FAILING_TRACE = str(Path("src/ninja_harness/examples/failing_agent_trace.json"))
+SUITE = str(Path("src/ninja_harness/examples/example_suite.yaml"))
+OPENAI_TRACE = str(Path("src/ninja_harness/examples/openai_agents_trace.json"))
 
 runner = CliRunner()
 
@@ -79,3 +80,36 @@ def test_score_outputs_grade() -> None:
     result = runner.invoke(app, ["score", "--trace", TRACE, "--format", "json"])
     assert "grade" in result.output
     assert "certification" in result.output
+
+
+def test_validate_openai_agents_trace() -> None:
+    result = runner.invoke(app, ["validate", "--trace", OPENAI_TRACE])
+    assert result.exit_code == 0
+    assert "OpenAIAgentsAdapter" in result.output
+
+
+def test_suite_command_rich() -> None:
+    result = runner.invoke(app, ["suite", "--suite", SUITE])
+    # Suite has WARN cases but no FAIL/errors → exit 0
+    assert result.exit_code == 0
+    assert "Ninja Harness Suite" in result.output or "Avg score" in result.output
+
+
+def test_suite_command_json() -> None:
+    result = runner.invoke(app, ["suite", "--suite", SUITE, "--format", "json"])
+    assert result.exit_code == 0
+    assert "average_score" in result.output or "results" in result.output
+
+
+def test_suite_command_async() -> None:
+    result = runner.invoke(app, ["suite", "--suite", SUITE, "--async"])
+    assert result.exit_code == 0
+
+
+def test_eval_save_baseline(tmp_path: Path) -> None:
+    baseline = tmp_path / "baseline.json"
+    result = runner.invoke(
+        app, ["eval", "--trace", TRACE, "--case", CASE, "--save-baseline", str(baseline), "--format", "json"]
+    )
+    assert result.exit_code in (0, 2)
+    assert baseline.exists()

@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 
-
 _INJECTION_SIGNALS = [
     # Classic ignore-previous-instructions patterns
     re.compile(r"(?i)ignore (all |previous |prior )?(instructions?|prompts?|directives?)"),

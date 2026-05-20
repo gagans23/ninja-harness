@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 
-
 _TOOL_MISUSE_PATTERNS = [
     # Shell injection
     re.compile(r"(?i)(subprocess\.call|os\.system|os\.popen|eval\(|exec\()\s*\("),

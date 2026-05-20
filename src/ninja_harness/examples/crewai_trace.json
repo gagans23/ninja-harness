@@ -1,0 +1,28 @@
+{
+  "_source": "crewai",
+  "crew_name": "ResearchCrew",
+  "agents": [
+    {"role": "Researcher", "goal": "Find accurate, current facts."},
+    {"role": "Writer", "goal": "Produce a clear summary."}
+  ],
+  "tasks": [
+    {
+      "task_id": "task-1",
+      "description": "Research the key benefits of retrieval-augmented generation (RAG).",
+      "agent": "Researcher",
+      "output": "RAG reduces hallucination by grounding responses in retrieved documents, enables up-to-date answers without retraining, and improves transparency via citations.",
+      "tools_used": [
+        {"tool": "web_search", "input": {"query": "retrieval augmented generation benefits"}, "output": "RAG grounds LLM outputs in external knowledge, reducing hallucination.", "status": "success"}
+      ]
+    },
+    {
+      "task_id": "task-2",
+      "description": "Write a concise 2-sentence summary of the RAG benefits found.",
+      "agent": "Writer",
+      "delegated_from": "Researcher",
+      "delegation_reason": "Research complete; summary drafting required.",
+      "output": "Retrieval-augmented generation grounds language model outputs in retrieved documents, reducing hallucination and enabling current, citable answers. It improves transparency and avoids costly retraining when knowledge changes."
+    }
+  ],
+  "final_output": "Retrieval-augmented generation grounds language model outputs in retrieved documents, reducing hallucination and enabling current, citable answers. It improves transparency and avoids costly retraining when knowledge changes."
+}

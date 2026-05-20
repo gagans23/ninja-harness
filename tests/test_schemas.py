@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from pydantic import ValidationError
 
@@ -77,14 +79,14 @@ def test_agent_run_latency_none() -> None:
 
 
 def test_agent_run_latency_computed() -> None:
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     run = AgentRun(
         agent_name="A",
         task="t",
         final_output="out",
-        start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-        end_time=datetime(2024, 1, 1, 0, 0, 30, tzinfo=timezone.utc),
+        start_time=datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC),
+        end_time=datetime(2024, 1, 1, 0, 0, 30, tzinfo=UTC),
     )
     assert run.latency_seconds == 30.0
 

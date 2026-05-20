@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -14,10 +14,10 @@ class ToolCall(BaseModel):
 
     tool_name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
-    result: Optional[str] = None
+    result: str | None = None
     status: str = "unknown"  # success | failed | unknown
-    error: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    error: str | None = None
+    timestamp: datetime | None = None
 
 
 class AgentStep(BaseModel):
@@ -26,10 +26,10 @@ class AgentStep(BaseModel):
     step_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     agent_name: str
     step_type: str  # plan | action | observation | handoff | guardrail | final
-    input: Optional[str] = None
-    output: Optional[str] = None
+    input: str | None = None
+    output: str | None = None
     status: str = "completed"  # completed | failed | skipped
-    error: Optional[str] = None
+    error: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -41,8 +41,8 @@ class Handoff(BaseModel):
     reason: str
     context_summary: str
     expected_next_action: str
-    task_id: Optional[str] = None
-    trace_id: Optional[str] = None
+    task_id: str | None = None
+    trace_id: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -63,19 +63,19 @@ class AgentRun(BaseModel):
     agent_name: str
     task: str
     final_output: str
-    expected_output: Optional[str] = None
+    expected_output: str | None = None
     steps: list[AgentStep] = Field(default_factory=list)
     tool_calls: list[ToolCall] = Field(default_factory=list)
     handoffs: list[Handoff] = Field(default_factory=list)
     guardrail_events: list[GuardrailEvent] = Field(default_factory=list)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    token_usage: Optional[dict[str, Any]] = None
-    cost: Optional[float] = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    token_usage: dict[str, Any] | None = None
+    cost: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property
-    def latency_seconds(self) -> Optional[float]:
+    def latency_seconds(self) -> float | None:
         if self.start_time and self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return None
@@ -94,13 +94,13 @@ class EvaluationCase(BaseModel):
 
     case_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     task: str
-    expected_output: Optional[str] = None
+    expected_output: str | None = None
     expected_tool_calls: list[ToolCall] = Field(default_factory=list)
     references: list[str] = Field(default_factory=list)
     safety_requirements: list[str] = Field(default_factory=list)
-    max_steps: Optional[int] = None
-    max_tool_calls: Optional[int] = None
-    max_latency_seconds: Optional[float] = None
+    max_steps: int | None = None
+    max_tool_calls: int | None = None
+    max_latency_seconds: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -123,7 +123,7 @@ class EvaluationResult(BaseModel):
     """The aggregated outcome of evaluating one agent run."""
 
     run_id: str
-    case_id: Optional[str] = None
+    case_id: str | None = None
     metric_results: list[MetricResult] = Field(default_factory=list)
     ninja_score: float  # 0–100
     grade: str  # A | B | C | D | F
@@ -131,8 +131,59 @@ class EvaluationResult(BaseModel):
     top_failure_reasons: list[str] = Field(default_factory=list)
     recommended_fixes: list[str] = Field(default_factory=list)
 
-    def metric_by_name(self, name: str) -> Optional[MetricResult]:
+    def metric_by_name(self, name: str) -> MetricResult | None:
         for m in self.metric_results:
             if m.name == name:
                 return m
         return None
+
+
+class SuiteCaseSpec(BaseModel):
+    """One entry in an evaluation suite: a trace and an optional eval case."""
+
+    name: str | None = None
+    trace: str  # path to the trace JSON
+    case: str | None = None  # path to the eval case YAML/JSON
+
+
+class SuiteSpec(BaseModel):
+    """A named collection of trace/case pairs to evaluate together."""
+
+    name: str = "Ninja Harness Suite"
+    description: str | None = None
+    baseline: str | None = None
+    cases: list[SuiteCaseSpec] = Field(default_factory=list)
+
+
+class SuiteResult(BaseModel):
+    """Aggregated results for a full suite run."""
+
+    name: str
+    results: list[EvaluationResult] = Field(default_factory=list)
+    errors: list[dict[str, Any]] = Field(default_factory=list)
+
+    @property
+    def total(self) -> int:
+        return len(self.results)
+
+    @property
+    def passed(self) -> int:
+        return sum(1 for r in self.results if r.certification == "PASS")
+
+    @property
+    def warned(self) -> int:
+        return sum(1 for r in self.results if r.certification == "WARN")
+
+    @property
+    def failed(self) -> int:
+        return sum(1 for r in self.results if r.certification == "FAIL")
+
+    @property
+    def pass_rate(self) -> float:
+        return self.passed / self.total if self.total else 0.0
+
+    @property
+    def average_score(self) -> float:
+        if not self.results:
+            return 0.0
+        return round(sum(r.ninja_score for r in self.results) / self.total, 2)

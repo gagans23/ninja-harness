@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 
-
 _DELEGATION_PATTERNS = [
     # Delegating to unknown/untrusted agents
     re.compile(r"(?i)(delegate|transfer|hand off|assign) (this task|control) to (an? )?(unknown|untrusted|external|unauthorized)"),
