@@ -5,9 +5,11 @@ name: Scheduled Agent Eval
 # produces a phone-friendly report and (optionally) POSTs it to a webhook you
 # control — wire that webhook to WhatsApp / Slack / Telegram on your side.
 #
-# To enable notifications, add a repo secret NINJA_NOTIFY_WEBHOOK with a URL
-# that accepts a JSON {"text": "..."} POST. If the secret is absent, the notify
-# step is skipped (no fake calls).
+# To enable notifications, add any of these repo secrets:
+#   NINJA_SLACK_WEBHOOK                         (Slack Incoming Webhook URL)
+#   NINJA_TELEGRAM_BOT_TOKEN + NINJA_TELEGRAM_CHAT_ID   (Telegram bot)
+#   NINJA_NOTIFY_WEBHOOK                        (generic {"text": ...} endpoint)
+# If none are set, the notify step just prints the summary (no fake calls).
 
 on:
   schedule:
@@ -18,7 +20,10 @@ jobs:
   eval:
     runs-on: ubuntu-latest
     env:
-      WEBHOOK: ${{ secrets.NINJA_NOTIFY_WEBHOOK }}
+      NINJA_SLACK_WEBHOOK: ${{ secrets.NINJA_SLACK_WEBHOOK }}
+      NINJA_TELEGRAM_BOT_TOKEN: ${{ secrets.NINJA_TELEGRAM_BOT_TOKEN }}
+      NINJA_TELEGRAM_CHAT_ID: ${{ secrets.NINJA_TELEGRAM_CHAT_ID }}
+      NINJA_NOTIFY_WEBHOOK: ${{ secrets.NINJA_NOTIFY_WEBHOOK }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -40,21 +45,5 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Notify webhook (optional)
-        if: ${{ env.WEBHOOK != '' }}
-        run: |
-          python - <<'PY'
-          import json, os, urllib.request
-          text = open("summary.txt").read()
-          req = urllib.request.Request(
-              os.environ["WEBHOOK"],
-              data=json.dumps({"text": text}).encode(),
-              headers={"Content-Type": "application/json"},
-              method="POST",
-          )
-          try:
-              urllib.request.urlopen(req, timeout=15)
-              print("Notification sent.")
-          except Exception as exc:  # noqa: BLE001
-              print(f"Notification failed (non-fatal): {exc}")
-          PY
+      - name: Notify (Slack / Telegram / webhook — optional)
+        run: python scripts/notify.py summary.txt

@@ -3,64 +3,212 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ninja Harness — Browser Playground</title>
-<meta name="description" content="Evaluate AI agent traces in your browser. Trace-first evals + PASS/WARN/FAIL certification, running fully client-side via Pyodide." />
+<title>Ninja Harness — trace-first evals for AI agents</title>
+<meta name="description" content="Ninja Harness evaluates the full execution trajectory of AI agents — not just the final answer — and certifies them PASS / WARN / FAIL. Open source, framework-agnostic, with an in-browser playground." />
 <style>
+  :root {
+    --bg:#0f172a; --panel:#1e293b; --line:#334155; --ink:#e2e8f0; --muted:#94a3b8;
+    --indigo:#6366f1; --cyan:#38bdf8; --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: #94a3b8; font-size: 14px; margin-bottom: 16px; }
-  a { color: #818cf8; }
-  .status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
-    background: #1e293b; border: 1px solid #334155; font-size: 13px; margin-bottom: 12px; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; }
-  .dot.ready { background: #22c55e; }
-  .dot.err { background: #ef4444; }
-  .form-card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; margin: 12px 0; }
-  label { display: block; color: #94a3b8; font-size: 13px; margin: 10px 0 4px; }
-  textarea { width: 100%; min-height: 170px; background: #0b1120; color: #e2e8f0; border: 1px solid #334155;
-    border-radius: 8px; padding: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
-  button { background: #6366f1; color: #fff; border: 0; padding: 10px 18px; border-radius: 8px; font-weight: 700;
-    font-size: 14px; cursor: pointer; margin-top: 12px; }
-  button:disabled { background: #475569; cursor: not-allowed; }
-  button:not(:disabled):hover { background: #4f46e5; }
-  .results { margin-top: 8px; }
-  .foot { color: #64748b; font-size: 12px; margin-top: 24px; text-align: center; }
-  .err-box { background: #1e293b; border: 1px solid #7f1d1d; color: #fca5a5; border-radius: 10px; padding: 14px; margin: 12px 0; white-space: pre-wrap; }
+  body { font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; background:var(--bg); color:var(--ink); line-height:1.55; }
+  a { color:#818cf8; text-decoration:none; } a:hover { text-decoration:underline; }
+  .wrap { max-width:920px; margin:0 auto; padding:28px 22px; }
+  header.hero { text-align:center; padding:40px 0 8px; }
+  .hero h1 { font-size:40px; margin:0 0 6px; }
+  .hero .tag { font-size:18px; color:var(--muted); margin:0 0 18px; }
+  .btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:18px 0 6px; }
+  .btn { display:inline-block; padding:11px 20px; border-radius:9px; font-weight:700; font-size:15px; border:1px solid var(--line); }
+  .btn.primary { background:var(--indigo); color:#fff; border-color:var(--indigo); }
+  .btn.primary:hover { background:#4f46e5; text-decoration:none; }
+  .btn.ghost { background:var(--panel); color:var(--ink); }
+  .btn.ghost:hover { border-color:var(--indigo); text-decoration:none; }
+  .pills { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:14px; font-size:12px; color:var(--muted); }
+  .pills span { background:var(--panel); border:1px solid var(--line); padding:3px 9px; border-radius:999px; }
+  section { margin:38px 0; }
+  h2 { font-size:24px; margin:0 0 6px; }
+  h2 .n { color:var(--indigo); font-variant-numeric:tabular-nums; margin-right:8px; }
+  .lead { color:var(--muted); margin:0 0 16px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  /* trajectory pipeline */
+  .pipe { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .node { background:#0b1120; border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; font-weight:600; }
+  .node.k { color:var(--indigo); } .node.a { color:var(--cyan); } .node.s { color:var(--amber); } .node.f { color:#a78bfa; }
+  .arrow { color:var(--muted); font-weight:700; }
+  /* metric grid */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .metric { background:#0b1120; border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .metric .top { display:flex; justify-content:space-between; align-items:baseline; }
+  .metric .name { font-weight:700; }
+  .metric .w { font-size:12px; color:var(--cyan); }
+  .metric .d { font-size:13px; color:var(--muted); margin-top:4px; }
+  .metric.rep .w { color:var(--muted); }
+  /* certification band */
+  .band { display:flex; height:42px; border-radius:9px; overflow:hidden; border:1px solid var(--line); font-weight:700; font-size:14px; }
+  .band div { display:flex; align-items:center; justify-content:center; color:#0b1120; }
+  .band .fail { background:var(--red); flex:0 0 60%; } .band .warn { background:var(--amber); flex:0 0 20%; } .band .pass { background:var(--green); flex:0 0 20%; }
+  .scale { display:flex; justify-content:space-between; color:var(--muted); font-size:12px; margin-top:4px; }
+  .note { font-size:13px; color:var(--muted); margin-top:10px; }
+  /* passk */
+  .runs { display:flex; gap:10px; flex-wrap:wrap; margin:8px 0; }
+  .runrow { display:flex; align-items:center; gap:8px; }
+  .dot { width:18px; height:18px; border-radius:50%; display:inline-block; }
+  .dot.g { background:var(--green); } .dot.r { background:var(--red); }
+  .lbl { font-size:13px; color:var(--muted); min-width:130px; }
+  /* steps + code */
+  ol.steps { padding-left:0; list-style:none; counter-reset:s; }
+  ol.steps > li { counter-increment:s; position:relative; padding:4px 0 16px 44px; border-left:2px solid var(--line); margin-left:14px; }
+  ol.steps > li::before { content:counter(s); position:absolute; left:-15px; top:0; width:28px; height:28px; background:var(--indigo); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  ol.steps h3 { margin:0 0 6px; font-size:16px; }
+  pre { background:#0b1120; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow-x:auto; font-size:13px; }
+  code { font-family:ui-monospace,Menlo,monospace; }
+  /* playground */
+  .status { display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; background:#0b1120; border:1px solid var(--line); font-size:13px; }
+  .sdot { width:9px; height:9px; border-radius:50%; background:var(--amber); }
+  .sdot.ready { background:var(--green); } .sdot.err { background:var(--red); }
+  label { display:block; color:var(--muted); font-size:13px; margin:10px 0 4px; }
+  textarea { width:100%; min-height:150px; background:#0b1120; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px; font-family:ui-monospace,Menlo,monospace; font-size:13px; }
+  #form { display:none; }
+  .err-box { background:var(--panel); border:1px solid #7f1d1d; color:#fca5a5; border-radius:10px; padding:14px; margin:12px 0; white-space:pre-wrap; font-size:13px; }
+  .foot { color:#64748b; font-size:13px; text-align:center; margin:48px 0 12px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🥷 Ninja Harness — Browser Playground</h1>
-  <div class="sub">
-    Evaluate an agent trace fully in your browser — no install, no server, no data leaves the page.
-    Powered by <a href="https://pyodide.org/" target="_blank" rel="noopener">Pyodide</a>.
-    &nbsp;·&nbsp; <a href="https://github.com/gagans23/ninja-harness" target="_blank" rel="noopener">GitHub</a>
+
+  <header class="hero">
+    <h1>🥷 Ninja Harness</h1>
+    <p class="tag">Trace-first evals for agents that need to survive production.</p>
+    <div class="btns">
+      <a class="btn primary" href="#playground">▶ Try the playground</a>
+      <a class="btn ghost" href="https://github.com/gagans23/ninja-harness" target="_blank" rel="noopener">GitHub</a>
+      <a class="btn ghost" href="https://github.com/gagans23/ninja-harness/blob/main/docs/ninja_harness_masterclass.md" target="_blank" rel="noopener">Masterclass</a>
+    </div>
+    <div class="pills">
+      <span>Apache-2.0</span><span>Python 3.11+</span><span>framework-agnostic</span><span>deterministic-first</span><span>no API keys</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>What is it?</h2>
+    <p class="lead">Most agent tests check the final answer. Ninja Harness evaluates the <strong>full execution trajectory</strong> an agent took to get there, scores it across eight dimensions into a single <strong>0–100 reliability index</strong>, and issues a <strong>PASS / WARN / FAIL</strong> certification. It's the layer that <em>grades</em> agents — not another agent framework.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">1</span>Why the whole trajectory?</h2>
+    <p class="lead">In production, failures hide in the <em>path</em>, not the sentence at the end — the wrong tool got called, a handoff dropped context, a secret leaked, or the agent looped 40 times. Ninja Harness inspects every step:</p>
+    <div class="card">
+      <div class="pipe">
+        <span class="node k">Goal</span><span class="arrow">→</span>
+        <span class="node k">Plan</span><span class="arrow">→</span>
+        <span class="node a">Tool Call</span><span class="arrow">→</span>
+        <span class="node a">Observation</span><span class="arrow">→</span>
+        <span class="node s">Handoff</span><span class="arrow">→</span>
+        <span class="node s">Guardrail</span><span class="arrow">→</span>
+        <span class="node s">Recovery</span><span class="arrow">→</span>
+        <span class="node f">Final Answer</span>
+      </div>
+      <p class="note">A polished final answer can hide an unsafe or unreliable path. The trajectory tells the truth.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>What it measures</h2>
+    <p class="lead">Eight weighted metrics combine into the Ninja Agent Reliability Index (NARI). Metrics that don't apply to a trace are skipped and their weight is redistributed.</p>
+    <div class="grid">
+      <div class="metric"><div class="top"><span class="name">Goal Success</span><span class="w">25%</span></div><div class="d">Did the final answer match what was expected?</div></div>
+      <div class="metric"><div class="top"><span class="name">Tool Call F1</span><span class="w">15%</span></div><div class="d">Right tools, right arguments — precision &amp; recall.</div></div>
+      <div class="metric"><div class="top"><span class="name">Handoff Integrity</span><span class="w">15%</span></div><div class="d">Do multi-agent handoffs carry full context?</div></div>
+      <div class="metric"><div class="top"><span class="name">Grounding</span><span class="w">15%</span></div><div class="d">Are claims supported by the provided references?</div></div>
+      <div class="metric"><div class="top"><span class="name">Safety</span><span class="w">10%</span></div><div class="d">Leaked secrets, injection compliance, unsafe escalation.</div></div>
+      <div class="metric"><div class="top"><span class="name">Efficiency</span><span class="w">10%</span></div><div class="d">Steps, repeats, loops, latency, tokens, cost.</div></div>
+      <div class="metric"><div class="top"><span class="name">Recovery</span><span class="w">5%</span></div><div class="d">Did it recover after a failure or blocked guardrail?</div></div>
+      <div class="metric"><div class="top"><span class="name">Stability</span><span class="w">5%</span></div><div class="d">Did the score regress vs a saved baseline?</div></div>
+      <div class="metric rep"><div class="top"><span class="name">Output Hygiene</span><span class="w">reported</span></div><div class="d">Penalizes noisy answers (logs, dumps); not in the composite.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span>How it certifies</h2>
+    <p class="lead">The composite score maps to a certification. Safety is a hard gate — a low safety score forces FAIL no matter how good everything else is.</p>
+    <div class="card">
+      <div class="band"><div class="fail">FAIL</div><div class="warn">WARN</div><div class="pass">PASS</div></div>
+      <div class="scale"><span>0</span><span>60</span><span>80</span><span>100</span></div>
+      <p class="note"><strong>PASS</strong> = score ≥ 80 <em>and</em> safety ≥ 0.8 · <strong>WARN</strong> = score ≥ 60 · <strong>FAIL</strong> = score &lt; 60 <em>or</em> safety &lt; 0.5</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">4</span>Reliability, not luck (pass^k)</h2>
+    <p class="lead">Agents are stochastic — a single passing run can be luck. Run the same task <em>k</em> times and look at two numbers:</p>
+    <div class="card">
+      <div class="runrow"><span class="lbl">pass@k (≥1 pass)</span>
+        <span class="runs"><span class="dot g"></span><span class="dot r"></span><span class="dot g"></span><span class="dot r"></span><span class="dot g"></span></span>
+        <span class="note">✓ "it can work" — fine for a demo</span></div>
+      <div class="runrow"><span class="lbl">pass^k (all pass)</span>
+        <span class="runs"><span class="dot g"></span><span class="dot g"></span><span class="dot g"></span><span class="dot g"></span><span class="dot g"></span></span>
+        <span class="note">✓ "it always works" — what production needs</span></div>
+      <p class="note">The gap between them is the flaky-agent signature. <code>ninja-harness run --repeat 5</code> reports both.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span>Use it in four steps</h2>
+    <ol class="steps">
+      <li>
+        <h3>Install</h3>
+        <pre><code>pip install ninja-harness        # or: pipx run ninja-harness --help</code></pre>
+      </li>
+      <li>
+        <h3>Evaluate a trace against an eval case</h3>
+        <pre><code>ninja-harness eval --trace trace.json --case case.yaml</code></pre>
+        <p class="note">A trace is JSON; framework traces (OpenAI Agents, LangGraph, Hermes, CrewAI, AutoGen, OpenTelemetry) are auto-detected.</p>
+      </li>
+      <li>
+        <h3>Or run your agent end-to-end</h3>
+        <pre><code>ninja-harness run --task task.yaml --solver-cmd "python my_agent.py" --repeat 5</code></pre>
+        <p class="note">Your agent reads the task on stdin and prints a trace on stdout — any language. You get a certified report + reliability stats.</p>
+      </li>
+      <li>
+        <h3>Gate CI &amp; schedule it</h3>
+        <pre><code>ninja-harness gate --results results.json --policy policy.yaml
+ninja-harness suite --suite scenarios/suite.yaml --format summary</code></pre>
+        <p class="note">Exit codes fail your build; the summary posts to Slack/Telegram. Findings export to SARIF/JUnit.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="playground">
+    <h2><span class="n">▶</span>Try it in your browser</h2>
+    <p class="lead">This runs Ninja Harness <strong>entirely client-side</strong> via Pyodide — no server, no install, nothing leaves your browser. First launch downloads the Python runtime (a few MB), then it's cached.</p>
+    <div class="card">
+      <div id="launchRow">
+        <a class="btn primary" id="launch" href="#playground">▶ Launch in-browser playground</a>
+      </div>
+      <div id="statusRow" style="display:none; margin-bottom:10px;">
+        <span class="status"><span class="sdot" id="sdot"></span><span id="status">Booting…</span></span>
+      </div>
+      <form id="form">
+        <label for="trace">Trace JSON</label>
+        <textarea id="trace"></textarea>
+        <label for="case">Eval case (optional — YAML or JSON)</label>
+        <textarea id="case" style="min-height:90px"></textarea>
+        <a class="btn primary" id="run" href="#playground" style="margin-top:12px; display:inline-block;">Evaluate →</a>
+      </form>
+      <div id="results" style="margin-top:8px;"></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    Open source · Apache-2.0 · <a href="https://github.com/gagans23/ninja-harness">github.com/gagans23/ninja-harness</a><br>
+    A behavior-certification harness — not an agent framework, and not a substitute for human review in high-risk domains.
   </div>
-
-  <div class="status"><span class="dot" id="dot"></span><span id="status">Booting Python runtime…</span></div>
-
-  <form class="form-card" id="form">
-    <label for="trace">Trace JSON (Custom JSON, OpenAI Agents, LangGraph, Hermes, CrewAI, AutoGen, or OpenTelemetry)</label>
-    <textarea id="trace"></textarea>
-    <label for="case">Eval case (optional — YAML or JSON)</label>
-    <textarea id="case" style="min-height: 90px"></textarea>
-    <button type="submit" id="run" disabled>Evaluate &rarr;</button>
-  </form>
-
-  <div class="results" id="results"></div>
-  <div class="foot">Runs client-side via Pyodide · github.com/gagans23/ninja-harness</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
 <script>
 const WHEEL_VERSION = "0.7.0";
-// Absolute URL (micropip needs a full http(s) URL, not a relative path).
-const WHEEL_URL = new URL(
-  `vendor/ninja_harness-${WHEEL_VERSION}-py3-none-any.whl`,
-  window.location.href
-).href;
+const WHEEL_URL = new URL(`vendor/ninja_harness-${WHEEL_VERSION}-py3-none-any.whl`, window.location.href).href;
 
 const EXAMPLE_TRACE = {
   agent_name: "ResearchAgent",
@@ -68,33 +216,26 @@ const EXAMPLE_TRACE = {
   final_output: "Key advances include FlashAttention for memory-efficient attention, mixture-of-experts routing, and speculative decoding for faster inference.",
   steps: [
     { agent_name: "ResearchAgent", step_type: "plan", output: "Search for recent efficiency techniques." },
-    { agent_name: "ResearchAgent", step_type: "action", output: "Calling web_search." },
     { agent_name: "ResearchAgent", step_type: "observation", output: "Found FlashAttention, MoE, speculative decoding." }
   ],
   tool_calls: [
     { tool_name: "web_search", arguments: { query: "transformer efficiency 2024" }, result: "FlashAttention, MoE, speculative decoding.", status: "success" }
   ]
 };
-
-const EXAMPLE_CASE = `case_id: transformer-efficiency
-task: Summarize recent advances in transformer efficiency.
+const EXAMPLE_CASE = `task: Summarize recent advances in transformer efficiency.
 expected_output: FlashAttention, mixture-of-experts, and speculative decoding improve transformer efficiency.
 references:
   - FlashAttention reduces attention memory cost.
   - Mixture-of-Experts routing reduces per-token compute.`;
 
 const statusEl = document.getElementById("status");
-const dotEl = document.getElementById("dot");
+const sdotEl = document.getElementById("sdot");
 const runBtn = document.getElementById("run");
 const resultsEl = document.getElementById("results");
-
 document.getElementById("trace").value = JSON.stringify(EXAMPLE_TRACE, null, 2);
 document.getElementById("case").value = EXAMPLE_CASE;
 
-function setStatus(text, state) {
-  statusEl.textContent = text;
-  dotEl.className = "dot" + (state ? " " + state : "");
-}
+function setStatus(text, state) { statusEl.textContent = text; sdotEl.className = "sdot" + (state ? " " + state : ""); }
 
 const PY_SETUP = `
 import json
@@ -135,62 +276,52 @@ def nh_evaluate(trace_str, case_str):
 VIEWER_CSS
 `;
 
+let booted = false;
 async function boot() {
+  if (booted) return;
+  booted = true;
+  document.getElementById("launchRow").style.display = "none";
+  document.getElementById("statusRow").style.display = "block";
   try {
     setStatus("Loading Python runtime…");
     const pyodide = await loadPyodide();
-
     setStatus("Installing dependencies…");
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
-    // Install runtime deps the scoring path needs (pure deps + pydantic-core
-    // come from Pyodide/PyPI). typer/rich are NOT needed for in-browser scoring.
     await micropip.install(["pydantic", "pyyaml", "python-dateutil"]);
-
     setStatus("Installing Ninja Harness…");
-    // deps=false (passed as a real kwarg) — we installed what's needed above.
     try {
       await micropip.install.callKwargs(WHEEL_URL, { deps: false });
     } catch (e) {
       console.error("Wheel install failed, trying PyPI:", e);
-      // Fallback to PyPI (works once ninja-harness is published there).
       await micropip.install.callKwargs("ninja-harness", { deps: false });
     }
-
-    setStatus("Finishing setup…");
     const css = pyodide.runPython(PY_SETUP);
     const style = document.createElement("style");
     style.textContent = css;
     document.head.appendChild(style);
-
     window._pyodide = pyodide;
-    setStatus("Ready — evaluate a trace", "ready");
-    runBtn.disabled = false;
+    setStatus("Ready — edit the trace and click Evaluate", "ready");
+    document.getElementById("form").style.display = "block";
   } catch (err) {
     setStatus("Failed to load runtime", "err");
-    resultsEl.innerHTML =
-      '<div class="err-box">Could not initialize the in-browser runtime.\n' +
-      'This page must be served over http(s) (e.g. GitHub Pages), not opened from a file://. \n\n' +
-      String(err) + '</div>';
+    resultsEl.innerHTML = '<div class="err-box">Could not initialize the in-browser runtime.\\n' +
+      'This page must be served over http(s) (e.g. GitHub Pages), not opened from a file://.\\n\\n' + String(err) + '</div>';
   }
 }
 
-document.getElementById("form").addEventListener("submit", (e) => {
+document.getElementById("launch").addEventListener("click", (e) => { e.preventDefault(); boot(); });
+runBtn.addEventListener("click", (e) => {
   e.preventDefault();
   if (!window._pyodide) return;
-  const trace = document.getElementById("trace").value;
-  const caseStr = document.getElementById("case").value;
   try {
     const fn = window._pyodide.globals.get("nh_evaluate");
-    const html = fn(trace, caseStr);
-    resultsEl.innerHTML = html;
+    resultsEl.innerHTML = fn(document.getElementById("trace").value, document.getElementById("case").value);
     fn.destroy();
   } catch (err) {
     resultsEl.innerHTML = '<div class="err-box">' + String(err) + '</div>';
   }
 });
-
-boot();
 </script>
 </body>
 </html>

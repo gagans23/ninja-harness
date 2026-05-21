@@ -294,7 +294,20 @@ Recommended fix: separate the final answer from the logs
 ninja-harness run --task task.yaml --solver-cmd "python my_agent.py" --repeat 5 --save-baseline baseline.json
 ```
 
-**Scheduled eval + notifications** — [`.github/workflows/eval-cron.yml`](.github/workflows/eval-cron.yml) runs the suite on a schedule, writes the summary to the run, and (optionally) POSTs it to a webhook you set via the `NINJA_NOTIFY_WEBHOOK` secret — wire that to WhatsApp / Slack / Telegram on your side. No credentials are bundled.
+**Scheduled eval + notifications** — [`.github/workflows/eval-cron.yml`](.github/workflows/eval-cron.yml) runs the suite on a schedule, writes the summary to the run, and relays it to your phone via [`scripts/notify.py`](scripts/notify.py). Set any of these repo secrets (no credentials are bundled):
+
+| Channel | Secrets |
+|---|---|
+| Slack | `NINJA_SLACK_WEBHOOK` (Incoming Webhook URL) |
+| Telegram | `NINJA_TELEGRAM_BOT_TOKEN` + `NINJA_TELEGRAM_CHAT_ID` |
+| Generic / WhatsApp relay | `NINJA_NOTIFY_WEBHOOK` (any `{"text": …}` endpoint) |
+
+```bash
+# Locally, too:
+ninja-harness suite --suite examples/scenarios/suite.yaml --format summary | python scripts/notify.py
+```
+
+WhatsApp's Cloud API needs Meta app setup — point `NINJA_NOTIFY_WEBHOOK` at a small relay you control that forwards to the Graph API, or use Slack/Telegram which work out of the box.
 
 ---
 
