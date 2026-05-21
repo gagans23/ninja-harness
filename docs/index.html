@@ -56,7 +56,11 @@
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
 <script>
 const WHEEL_VERSION = "0.7.0";
-const WHEEL_URL = `vendor/ninja_harness-${WHEEL_VERSION}-py3-none-any.whl`;
+// Absolute URL (micropip needs a full http(s) URL, not a relative path).
+const WHEEL_URL = new URL(
+  `vendor/ninja_harness-${WHEEL_VERSION}-py3-none-any.whl`,
+  window.location.href
+).href;
 
 const EXAMPLE_TRACE = {
   agent_name: "ResearchAgent",
@@ -139,14 +143,18 @@ async function boot() {
     setStatus("Installing dependencies…");
     await pyodide.loadPackage("micropip");
     const micropip = pyodide.pyimport("micropip");
-    await micropip.install(["pydantic", "pyyaml"]);
+    // Install runtime deps the scoring path needs (pure deps + pydantic-core
+    // come from Pyodide/PyPI). typer/rich are NOT needed for in-browser scoring.
+    await micropip.install(["pydantic", "pyyaml", "python-dateutil"]);
 
     setStatus("Installing Ninja Harness…");
+    // deps=false (passed as a real kwarg) — we installed what's needed above.
     try {
-      await micropip.install(WHEEL_URL, false /* deps */);
+      await micropip.install.callKwargs(WHEEL_URL, { deps: false });
     } catch (e) {
-      // Fallback to PyPI once published.
-      await micropip.install("ninja-harness", false);
+      console.error("Wheel install failed, trying PyPI:", e);
+      // Fallback to PyPI (works once ninja-harness is published there).
+      await micropip.install.callKwargs("ninja-harness", { deps: false });
     }
 
     setStatus("Finishing setup…");
