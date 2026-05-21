@@ -196,3 +196,34 @@ def test_run_command_requires_solver() -> None:
     result = runner.invoke(app, ["run", "--task", TASK])
     assert result.exit_code == 1
     assert "solver-cmd" in result.output or "replay" in result.output
+
+
+def test_view_command_writes_html(tmp_path: Path) -> None:
+    out = tmp_path / "trace.html"
+    result = runner.invoke(app, ["view", "--trace", TRACE, "--case", CASE, "-o", str(out)])
+    assert result.exit_code == 0
+    assert out.exists()
+    content = out.read_text()
+    assert content.startswith("<!DOCTYPE html>")
+    assert "ResearchAgent" in content
+
+
+def test_calibrate_command(tmp_path: Path) -> None:
+    # Build a results file from two scored traces, then calibrate against labels.
+    r1 = tmp_path / "e1.json"
+    runner.invoke(app, ["eval", "--trace", TRACE, "--case", CASE, "-o", str(r1), "--format", "json"])
+    import json as _json
+
+    results = [_json.loads(r1.read_text())]
+    results_file = tmp_path / "results.json"
+    results_file.write_text(_json.dumps(results))
+
+    run_id = results[0]["run_id"]
+    labels_file = tmp_path / "labels.json"
+    labels_file.write_text(_json.dumps([{"run_id": run_id, "metric": "goal_success", "human_score": 0.6}]))
+
+    result = runner.invoke(
+        app, ["calibrate", "--results", str(results_file), "--labels", str(labels_file), "--format", "json"]
+    )
+    assert result.exit_code == 0
+    assert "mean_abs_error" in result.output

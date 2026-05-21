@@ -1,0 +1,5 @@
+[
+  {"run_id": "run-simple-001", "metric": "goal_success", "human_score": 0.6, "annotator": "alice", "notes": "Covers most key advances; missing AWQ detail."},
+  {"run_id": "run-hermes-001", "metric": "goal_success", "human_score": 0.5, "annotator": "alice", "notes": "Good summary but drops a couple expected terms."},
+  {"run_id": "run-failing-001", "metric": "goal_success", "human_score": 0.1, "annotator": "bob", "notes": "Did not produce the requested figures."}
+]

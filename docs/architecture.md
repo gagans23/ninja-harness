@@ -201,3 +201,22 @@ TaskSpec ──> Solver.solve() ──> AgentRun ──> NinjaScoreAggregator �
   cannot force determinism of an external LLM agent.
 
 The CLI exposes this as `ninja-harness run --task task.yaml --solver-cmd "..."`.
+
+---
+
+## Benchmarks, Simulator, Viewer, Calibration (v0.5)
+
+- **Benchmark loaders** (`datasets/benchmarks.py`) — `load_benchmark(name, path)`
+  maps SWE-bench / GAIA / tau-bench on-disk formats (JSON or JSONL) into
+  `EvaluationCase`s. Datasets are not bundled; no benchmark scores are claimed.
+- **User simulator** (`simulator.py`) — `UserSimulator` protocol with
+  `ScriptedUserSimulator` (deterministic) and `CallableUserSimulator` (LLM-played,
+  model supplied by you). `run_dialogue(agent_fn, simulator)` captures a
+  multi-turn conversation as an `AgentRun`.
+- **HTML trace viewer** (`reporters/html.py`) — `render_html(run, result)` emits a
+  single self-contained, offline HTML page. All trace content is HTML-escaped, so
+  untrusted text cannot inject markup. CLI: `ninja-harness view`.
+- **Calibration** (`calibration.py`) — `calibrate_from_results(results, labels)`
+  matches human labels (`HumanLabel`) to judge scores by run_id and reports MAE,
+  agreement-within-tolerance, Pearson, Spearman, and Cohen's κ. Pure-Python
+  stats, no numpy. CLI: `ninja-harness calibrate`.

@@ -271,6 +271,25 @@ The pipeline is: **TaskSpec → Solver → AgentRun → evaluate → certified R
 
 A working, dependency-free example agent lives at [examples/agents/echo_agent.py](examples/agents/echo_agent.py).
 
+### Benchmarks, simulator, viewer, calibration (v0.5)
+
+```bash
+# Evaluate against recognized benchmark formats (bring your own dataset files)
+python -c "from ninja_harness.datasets import load_benchmark; print(len(load_benchmark('gaia', 'examples/benchmarks/gaia_sample.jsonl')))"
+
+# Visualize a trajectory as a self-contained HTML file (no server, no deps)
+ninja-harness view --trace src/ninja_harness/examples/simple_agent_trace.json \
+  --case src/ninja_harness/examples/evaluation_case.yaml -o trace.html
+
+# Keep your judge honest: measure agreement with human labels
+ninja-harness calibrate --results results.json --labels src/ninja_harness/examples/human_labels.json --metric goal_success
+```
+
+- **Benchmark loaders** — `load_benchmark("swebench"|"gaia"|"taubench", path)` maps each benchmark's on-disk format into `EvaluationCase`s. Datasets are not bundled and **no benchmark scores are claimed**.
+- **Multi-turn user simulator** — `run_dialogue(agent_fn, ScriptedUserSimulator([...]))` captures a conversational `AgentRun`; `CallableUserSimulator` lets an LLM play the user (you supply the model).
+- **Trace viewer** — `ninja-harness view` renders an offline HTML trajectory explorer (content is HTML-escaped).
+- **Calibration** — `ninja-harness calibrate` reports MAE, Pearson, Spearman, and Cohen's κ between judge scores and human labels.
+
 ---
 
 ## Roadmap
@@ -279,8 +298,9 @@ See [docs/roadmap.md](docs/roadmap.md) for full details.
 
 **v0.2** ✅ — Real framework adapters, async + suite runner, judge plug-in interface, baseline save
 **v0.3** ✅ — Reliability stats (`pass^k`), OTel ingest, OWASP/ATLAS mapping, SARIF/JUnit, policy gate, judge bias mitigation
-**v0.4** 🚧 — Closed loop: `run` (solver + sandbox + manifest) ✅ · next: benchmark loaders (SWE-bench/τ-bench/GAIA), user simulator, trace viewer, calibration
-**v1.0** — Stable API, governance report templates, community plugins
+**v0.4** ✅ — Closed loop: `run` (solver + sandbox + reproducibility manifest)
+**v0.5** ✅ — Benchmark loaders (SWE-bench/τ-bench/GAIA), multi-turn user simulator, HTML trace viewer, judge calibration
+**v1.0** — `diff`, pytest plugin, OTLP ingest, dashboards, stable API, governance templates
 
 ---
 

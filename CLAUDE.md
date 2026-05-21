@@ -97,7 +97,18 @@ not extrapolations — keep them honest.
 - DockerSandbox must never silently fall back to local (defeats isolation).
 - Still no bundled LLM agent — bring your own via a solver.
 
-Remaining v0.4: real benchmark loaders (SWE-bench/τ-bench/GAIA on-disk formats,
-bring-your-own-dataset, NO fabricated scores), multi-turn user simulator
-(pluggable model + deterministic default), static-HTML trace viewer, human
-annotation/calibration loop. Then `diff`, grounding judge, pytest plugin.
+## v0.5 (shipped — completes the end-to-end harness)
+
+- Benchmark loaders (`datasets/benchmarks.py`): SWE-bench/GAIA/tau-bench on-disk
+  formats → EvaluationCase. Bring-your-own-dataset; NEVER fabricate scores.
+- Multi-turn user simulator (`simulator.py`): ScriptedUserSimulator,
+  CallableUserSimulator, `run_dialogue()` → AgentRun. No bundled model.
+- HTML trace viewer (`reporters/html.py`): self-contained, offline, all content
+  HTML-escaped. CLI `view`.
+- Calibration (`calibration.py` + HumanLabel/CalibrationReport): MAE, Pearson,
+  Spearman, Cohen's κ. CLI `calibrate`. Pure-Python stats (no numpy).
+
+## Remaining (v0.6/v1.0)
+
+- `diff`, grounding judge, pytest plugin, native OTLP/protobuf ingest, HTML
+  reliability dashboard, stable API.

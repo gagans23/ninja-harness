@@ -65,6 +65,13 @@ jobs:
           # Echo agent is trivial; certification may be FAIL (exit 2). Verify report exists.
           test -f run_report.json
 
+      - name: CLI smoke test — HTML trace viewer
+        run: |
+          ninja-harness view \
+            --trace src/ninja_harness/examples/simple_agent_trace.json \
+            --case src/ninja_harness/examples/evaluation_case.yaml -o trace.html
+          test -f trace.html
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

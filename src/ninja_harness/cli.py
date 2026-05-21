@@ -13,6 +13,7 @@ from rich.table import Table
 
 from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
+from ninja_harness.calibration import calibrate_from_results
 from ninja_harness.datasets.loader import load_task, load_trace
 from ninja_harness.policy import apply_policy, load_policy
 from ninja_harness.redteam import run_all_checks
@@ -23,9 +24,15 @@ from ninja_harness.report import (
     generate_suite_markdown_report,
     save_report,
 )
-from ninja_harness.reporters import evaluation_to_junit, to_sarif
+from ninja_harness.reporters import evaluation_to_junit, render_html, to_sarif
 from ninja_harness.runner import EvaluationRunner, SuiteRunner, TaskExecutor
-from ninja_harness.schemas import AgentRun, AggregateResult, EvaluationResult, SuiteResult
+from ninja_harness.schemas import (
+    AgentRun,
+    AggregateResult,
+    EvaluationResult,
+    HumanLabel,
+    SuiteResult,
+)
 from ninja_harness.solver import CommandSolver, ScriptedSolver
 from ninja_harness.statistics import aggregate_results
 
@@ -453,6 +460,81 @@ def gate(
 
     if not gate_result.passed:
         raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# view command — self-contained HTML trace viewer
+# ---------------------------------------------------------------------------
+
+@app.command()
+def view(
+    trace: Path = typer.Option(..., help="Path to an agent trace JSON file."),
+    case: Path | None = typer.Option(None, help="Optional eval case to score + show metrics."),
+    output: Path = typer.Option(Path("trace.html"), "--output", "-o", help="Output HTML file."),
+) -> None:
+    """Render a self-contained HTML trajectory explorer for a trace."""
+    try:
+        raw = load_trace(trace)
+        run_obj = detect_adapter(raw).parse(raw)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    result = None
+    if case:
+        _, _, result = EvaluationRunner().run_from_files(trace, case)
+
+    html = render_html(run_obj, result)
+    save_report(html, str(output))
+    console.print(f"[green]✅ Trace viewer written to:[/] {output}")
+
+
+# ---------------------------------------------------------------------------
+# calibrate command — judge vs human agreement
+# ---------------------------------------------------------------------------
+
+@app.command()
+def calibrate(
+    results: Path = typer.Option(..., help="JSON file: a list of EvaluationResult objects."),
+    labels: Path = typer.Option(..., help="JSON file: a list of HumanLabel objects."),
+    metric: str = typer.Option("goal_success", help="Which metric to calibrate."),
+    tolerance: float = typer.Option(0.1, help="Agreement tolerance band."),
+    format: str = typer.Option("rich", help="Output format: rich | json."),
+) -> None:
+    """Measure agreement between automated judge scores and human labels."""
+    if not results.exists() or not labels.exists():
+        console.print("[bold red]Error:[/] results and labels files must both exist.")
+        raise typer.Exit(1)
+
+    with results.open() as f:
+        result_objs = [EvaluationResult.model_validate(r) for r in json.load(f)]
+    with labels.open() as f:
+        label_objs = [HumanLabel.model_validate(label) for label in json.load(f)]
+
+    try:
+        report = calibrate_from_results(result_objs, label_objs, metric=metric, tolerance=tolerance)
+    except ValueError as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    if format == "json":
+        console.print_json(report.model_dump_json(indent=2))
+    else:
+        console.print(
+            Panel(
+                f"  Metric        : [bold]{report.metric}[/]\n"
+                f"  Pairs (n)     : {report.n}\n"
+                f"  Mean abs err  : {report.mean_abs_error:.3f}\n"
+                f"  Within ±{report.tolerance:.2f}   : {report.agreement_within_tolerance:.0%}\n"
+                f"  Pearson r     : {report.pearson}\n"
+                f"  Spearman ρ    : {report.spearman}\n"
+                f"  Cohen's κ     : {report.cohen_kappa}",
+                title="[bold]Judge Calibration[/]",
+                border_style="cyan",
+            )
+        )
+        for n in report.notes:
+            console.print(f"  • {n}")
 
 
 # ---------------------------------------------------------------------------

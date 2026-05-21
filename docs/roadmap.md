@@ -52,21 +52,29 @@
 
 ---
 
-## v0.4 — End-to-End Harness (in progress)
+## v0.4 / v0.5 — End-to-End Harness ✅
 
-Turning Ninja from a trace scorer into a full harness that *runs* agents.
+Turned Ninja from a trace scorer into a full harness that *runs* agents.
 
-- [x] **Closed loop** — `ninja-harness run` drives an agent, captures the trace, evaluates, and certifies
-- [x] **Solver abstraction** — `CommandSolver` (any agent/any language), `ScriptedSolver`, `CallableSolver`
-- [x] **Sandbox** — `LocalSandbox` (subprocess+timeout) and `DockerSandbox` (host isolation; no silent fallback)
-- [x] **Reproducibility manifest** — versions, platform, git SHA, seed, trace SHA-256
-- [ ] **Real benchmark loaders** — SWE-bench / τ-bench / GAIA on-disk formats → EvaluationCases (bring-your-own-dataset; no fabricated scores)
-- [ ] **Multi-turn user simulator** — τ-bench-style simulated user (pluggable model, deterministic default)
-- [ ] **Trace viewer UI** — self-contained static HTML trajectory explorer
-- [ ] **Human annotation / calibration loop** — judge-vs-human agreement + correlation
+- [x] **Closed loop** — `ninja-harness run` drives an agent, captures the trace, evaluates, and certifies (v0.4)
+- [x] **Solver abstraction** — `CommandSolver` (any agent/any language), `ScriptedSolver`, `CallableSolver` (v0.4)
+- [x] **Sandbox** — `LocalSandbox` (subprocess+timeout) and `DockerSandbox` (host isolation; no silent fallback) (v0.4)
+- [x] **Reproducibility manifest** — versions, platform, git SHA, seed, trace SHA-256 (v0.4)
+- [x] **Real benchmark loaders** — SWE-bench / τ-bench / GAIA on-disk formats → EvaluationCases (bring-your-own-dataset; no fabricated scores) (v0.5)
+- [x] **Multi-turn user simulator** — `ScriptedUserSimulator` + `CallableUserSimulator` + `run_dialogue()` (pluggable model, deterministic default) (v0.5)
+- [x] **Trace viewer UI** — self-contained static HTML trajectory explorer (`ninja-harness view`) (v0.5)
+- [x] **Human annotation / calibration loop** — judge-vs-human MAE, Pearson/Spearman, Cohen's κ (`ninja-harness calibrate`) (v0.5)
+
+---
+
+## v0.6 / v1.0 — Polish & Stabilize
+
 - [ ] `ninja-harness diff` — rich comparison of two results
 - [ ] Judge plug-in extended to the Grounding metric
-- [ ] `pytest` plugin; native OTLP/protobuf span ingest; HTML reliability dashboard
+- [ ] `pytest` plugin: `pytest --ninja-harness-trace trace.json`
+- [ ] Native OTLP/protobuf span ingest (beyond the simplified JSON span list)
+- [ ] HTML reliability dashboard with trend charts across runs
+- [ ] Stable public API (no breaking changes in 1.x), governance report templates, community plugins
 
 ---
 

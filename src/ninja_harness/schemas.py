@@ -315,3 +315,32 @@ class RunReport(BaseModel):
     run: AgentRun
     result: EvaluationResult
     manifest: RunManifest
+
+
+class HumanLabel(BaseModel):
+    """A human judgement of one run, used to calibrate automated judges."""
+
+    run_id: str
+    metric: str = "goal_success"  # which dimension was judged, or "overall"
+    human_score: float  # 0.0 - 1.0
+    annotator: str = "unknown"
+    notes: str = ""
+
+
+class CalibrationReport(BaseModel):
+    """
+    Agreement between automated judge scores and human labels.
+
+    Keeps judges honest: if correlation/agreement drifts, recalibrate or swap
+    the judge. Built from matched (judge_score, human_score) pairs.
+    """
+
+    n: int
+    metric: str
+    mean_abs_error: float
+    agreement_within_tolerance: float  # fraction of pairs within `tolerance`
+    tolerance: float
+    pearson: float | None = None
+    spearman: float | None = None
+    cohen_kappa: float | None = None  # binary pass/fail at 0.5 threshold
+    notes: list[str] = Field(default_factory=list)

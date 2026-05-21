@@ -1,0 +1,2 @@
+{"task_id": "gaia-demo-001", "Question": "What is the capital of the country whose flag has a single five-pointed star on a blue and white field and borders Brazil to the south?", "Level": 1, "Final answer": "Montevideo", "file_name": ""}
+{"task_id": "gaia-demo-002", "Question": "Using the attached spreadsheet, what is the total revenue for Q3 across all regions?", "Level": 2, "Final answer": "4205000", "file_name": "q3_revenue.xlsx"}

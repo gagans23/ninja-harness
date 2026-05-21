@@ -1,0 +1,22 @@
+[
+  {
+    "annotator": "demo",
+    "user_id": "user_001",
+    "instruction": "You are a customer who was charged twice for the same order. Ask for a refund of the duplicate charge.",
+    "actions": [
+      {"name": "lookup_charges", "kwargs": {"customer_id": "user_001", "period": "current_month"}},
+      {"name": "issue_refund", "kwargs": {"customer_id": "user_001", "amount": 20.0, "reason": "duplicate_charge"}}
+    ],
+    "outputs": ["Refund of $20.00 issued for the duplicate charge."]
+  },
+  {
+    "annotator": "demo",
+    "user_id": "user_002",
+    "instruction": "You want to change the shipping address on an order that has not yet shipped.",
+    "actions": [
+      {"name": "lookup_order", "kwargs": {"order_id": "A-7781"}},
+      {"name": "update_shipping_address", "kwargs": {"order_id": "A-7781", "address": "123 New St"}}
+    ],
+    "outputs": ["Shipping address updated for order A-7781."]
+  }
+]
