@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use Ninja Harness in your work, please cite it."
+title: "Ninja Harness: Trace-first evaluation and certification for AI agents"
+abstract: >-
+  Ninja Harness is an open-source, framework-agnostic evaluation harness for
+  agentic AI systems. It scores the full execution trajectory (plan, tool calls,
+  handoffs, guardrails, recovery) into a composite reliability index with a
+  PASS/WARN/FAIL certification, reports pass^k reliability across repeated runs,
+  maps safety findings to OWASP LLM Top 10 and MITRE ATLAS, and integrates with
+  CI via SARIF/JUnit.
+type: software
+authors:
+  - family-names: Singh
+    given-names: Gagan
+    alias: gagans23
+repository-code: "https://github.com/gagans23/ninja-harness"
+url: "https://gagans23.github.io/ninja-harness/"
+license: Apache-2.0
+version: "0.7.0"
+date-released: "2026-05-21"
+keywords:
+  - ai-agents
+  - evaluation
+  - llm
+  - ai-safety
+  - tracing
+  - agent-evaluation

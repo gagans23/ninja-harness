@@ -1,8 +1,27 @@
-# Ninja Harness
+<h1 align="center">🥷 Ninja Harness</h1>
 
-**Trace-first evals for agents that need to survive production.**
+<p align="center"><strong>Trace-first evals for agents that need to survive production.</strong></p>
+
+<p align="center">
+  <a href="https://github.com/gagans23/ninja-harness/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/gagans23/ninja-harness/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/gagans23/ninja-harness/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/gagans23/ninja-harness?display_name=tag&color=6366f1"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue"></a>
+  <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-blue">
+  <a href="https://gagans23.github.io/ninja-harness/"><img alt="Playground" src="https://img.shields.io/badge/playground-live-22c55e"></a>
+  <a href="https://github.com/gagans23/ninja-harness/blob/main/CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen"></a>
+</p>
+
+<p align="center">
+  <a href="https://gagans23.github.io/ninja-harness/"><strong>🚀 Try the live playground</strong></a> ·
+  <a href="docs/ninja_harness_masterclass.md">Masterclass</a> ·
+  <a href="docs/metrics.md">Metrics</a> ·
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/roadmap.md">Roadmap</a>
+</p>
 
 > Ninja Harness is a trace-aware evaluation harness for agentic AI systems. It helps developers test whether agents are reliable, safe, efficient, and production-ready — not just whether they produced a polished final answer.
+
+> **▶ No install:** evaluate a trace in your browser at **[gagans23.github.io/ninja-harness](https://gagans23.github.io/ninja-harness/)** (runs fully client-side).
 
 ---
 

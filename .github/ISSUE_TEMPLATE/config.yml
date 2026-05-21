@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/gagans23/ninja-harness/security/advisories/new
+    about: Report security issues privately — do not open a public issue.
+  - name: Question / discussion
+    url: https://github.com/gagans23/ninja-harness/discussions
+    about: Ask questions and share ideas in Discussions.
+  - name: Read the docs
+    url: https://github.com/gagans23/ninja-harness/tree/main/docs
+    about: Architecture, metrics, methodology, and the masterclass.

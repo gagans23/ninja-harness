@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a new metric, adapter, or capability
+title: "[feat]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The use case or pain point, not just the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you'd like Ninja Harness to do.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - New framework adapter
+        - New metric
+        - Scoring / reliability
+        - Safety / red-team
+        - CLI / reporting
+        - Runner / sandbox
+        - Playground / docs
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Project principles
+      options:
+        - label: "This stays deterministic-first / doesn't require a bundled LLM or API key in core"
+        - label: "This avoids fake integrations and unsupported benchmark claims"
