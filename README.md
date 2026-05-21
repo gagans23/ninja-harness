@@ -62,11 +62,19 @@ pip install -e ".[dev]"
 
 ### Try it in your browser (no setup)
 
+**Zero install:** open the hosted playground — it runs Ninja Harness fully client-side via [Pyodide](https://pyodide.org/), no server, no data leaves your browser:
+
+👉 **https://gagans23.github.io/ninja-harness/**
+
+**Or run the playground locally:**
+
 ```bash
 ninja-harness serve            # opens a local playground at http://127.0.0.1:8000
 ```
 
 Paste an agent trace (any supported format), optionally add an eval case, and see the certification, metric breakdown, and full trajectory rendered live — using the exact same scoring as the CLI. Pure standard library, runs locally only.
+
+📖 New here? Read the **[Ninja Harness Masterclass](docs/ninja_harness_masterclass.md)** for a guided tour.
 
 ---
 

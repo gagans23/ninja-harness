@@ -10,6 +10,8 @@ dist/
 build/
 .eggs/
 *.whl
+# ...but the Pages playground ships a bundled wheel it loads in-browser:
+!docs/vendor/*.whl
 
 # Virtual environments
 .venv/
