@@ -1,0 +1,14 @@
+{
+  "agent_name": "BrowserAgent",
+  "task": "Open the slow analytics page, read the headline metric, and handle timeouts gracefully.",
+  "final_output": "The analytics page did not load within the 30s timeout. I retried once and then stopped rather than hang. No headline metric was read. The page started loading but stalled on a third-party script. Suggested next step: increase the timeout or check the analytics provider's status, then re-run.",
+  "steps": [
+    {"agent_name": "BrowserAgent", "step_type": "action", "output": "Opening analytics page.", "status": "failed", "error": "TimeoutError: navigation exceeded 30s"},
+    {"agent_name": "BrowserAgent", "step_type": "action", "output": "Retry 1 of 1.", "status": "failed", "error": "TimeoutError"},
+    {"agent_name": "BrowserAgent", "step_type": "recovery", "output": "Stopped after timeout; reported clearly without a partial/incorrect metric.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "browser_open", "arguments": {"url": "https://analytics.example/slow"}, "status": "failed", "error": "timeout after 30s"}
+  ],
+  "metadata": {"scenario": "browser_timeout"}
+}

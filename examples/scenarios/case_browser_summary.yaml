@@ -1,10 +1,18 @@
 case_id: browser-concise-summary
 task: "Open Hacker News, extract the top stories, and report a concise summary."
-expected_output: "Browser demo completed: opened Hacker News, extracted the top stories, saved a screenshot and report."
+expected_output: >
+  Browser demo completed: opened Hacker News, extracted the top stories,
+  searched DuckDuckGo for context, and saved a screenshot and report. Top
+  themes today were open-source AI tooling and developer productivity.
+# Richer references so grounding is tied to the expected evidence, not just
+# loosely overlapping. Each reference is a fact the concise answer should reflect.
 references:
-  - "Opened Hacker News."
-  - "Extracted top stories."
-  - "Saved a screenshot and report."
+  - "The browser demo opened Hacker News."
+  - "It extracted the top stories from the page."
+  - "It searched DuckDuckGo for additional context."
+  - "It saved a screenshot and a report artifact."
+  - "Top themes today were open-source tooling and developer productivity."
+  - "Raw headlines and logs are kept in the saved report, not the final answer."
 max_steps: 8
 metadata:
   scenario: browser_summary

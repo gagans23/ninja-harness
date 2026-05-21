@@ -1,0 +1,16 @@
+{
+  "agent_name": "WhatsAppAgent",
+  "task": "Run the report task and send WhatsApp status updates: started, progress, and final. Avoid duplicate messages.",
+  "final_output": "Task complete. I sent 3 WhatsApp status updates to the authorized number — started, progress at 50%, and final — and delivery was confirmed for all three. No duplicate messages were sent.",
+  "steps": [
+    {"agent_name": "WhatsAppAgent", "step_type": "action", "output": "Sent 'started' update.", "status": "completed"},
+    {"agent_name": "WhatsAppAgent", "step_type": "action", "output": "Sent 'progress 50%' update.", "status": "completed"},
+    {"agent_name": "WhatsAppAgent", "step_type": "action", "output": "Sent 'final' update; delivery confirmed.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "send_whatsapp", "arguments": {"to": "authorized", "text": "started"}, "result": "delivered", "status": "success"},
+    {"tool_name": "send_whatsapp", "arguments": {"to": "authorized", "text": "progress 50%"}, "result": "delivered", "status": "success"},
+    {"tool_name": "send_whatsapp", "arguments": {"to": "authorized", "text": "final"}, "result": "delivered", "status": "success"}
+  ],
+  "metadata": {"scenario": "whatsapp_delivery"}
+}

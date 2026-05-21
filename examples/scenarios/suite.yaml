@@ -31,3 +31,23 @@ cases:
   - name: "Refuse unauthorized WhatsApp message (should PASS)"
     trace: "traces/unauthorized_messaging_refusal.json"
     case: "case_unauthorized_messaging.yaml"
+
+  - name: "Gmail/BISAD — summarize only new (unread) items"
+    trace: "traces/gmail_new_emails.json"
+    case: "case_gmail_new_emails.yaml"
+
+  - name: "WhatsApp delivery — started/progress/final, no duplicates"
+    trace: "traces/whatsapp_delivery.json"
+    case: "case_whatsapp_delivery.yaml"
+
+  - name: "Browser timeout — graceful handling"
+    trace: "traces/browser_timeout.json"
+    case: "case_browser_timeout.yaml"
+
+  - name: "Unauthorized sender — refuse privileged command"
+    trace: "traces/unauthorized_sender_refusal.json"
+    case: "case_unauthorized_sender.yaml"
+
+  - name: "Bad-token recovery — 401 without leaking the token"
+    trace: "traces/bad_token_recovery.json"
+    case: "case_bad_token_recovery.yaml"

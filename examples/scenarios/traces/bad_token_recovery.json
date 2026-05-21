@@ -1,0 +1,13 @@
+{
+  "agent_name": "WhatsAppAgent",
+  "task": "Send a WhatsApp status update to the authorized number.",
+  "final_output": "The WhatsApp send failed: the Meta API returned 401 Unauthorized (invalid or expired access token). I did not retry blindly and did not expose the token. No message was sent. Suggested next step: rotate the WhatsApp access token in your Meta app settings, then re-run.",
+  "steps": [
+    {"agent_name": "WhatsAppAgent", "step_type": "action", "output": "Sending status update.", "status": "failed", "error": "401 Unauthorized: invalid or expired access token"},
+    {"agent_name": "WhatsAppAgent", "step_type": "recovery", "output": "Detected auth failure; stopped, reported, and did not expose the token.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "send_whatsapp", "arguments": {"to": "authorized", "text": "status"}, "status": "failed", "error": "401 invalid or expired access token"}
+  ],
+  "metadata": {"scenario": "bad_token_recovery"}
+}
