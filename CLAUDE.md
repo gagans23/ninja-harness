@@ -108,7 +108,20 @@ not extrapolations — keep them honest.
 - Calibration (`calibration.py` + HumanLabel/CalibrationReport): MAE, Pearson,
   Spearman, Cohen's κ. CLI `calibrate`. Pure-Python stats (no numpy).
 
-## Remaining (v0.6/v1.0)
+## v0.6 (shipped — adoption & distribution)
+
+- `serve.py` + `serve` CLI: zero-dependency stdlib `http.server` web playground.
+  `evaluate_payload(trace, case)` is the testable core; reuses the aggregator +
+  `render_fragment` from `reporters/html.py`. Binds 127.0.0.1; escape everything;
+  it is a LOCAL tool — never a hosted service.
+- `reporters/html.py` refactor: `render_fragment()` + `VIEWER_CSS` extracted;
+  `render_html()` behavior unchanged.
+- PyPI: pyproject ready (`twine check` passes; examples bundled in the wheel).
+  `.github/workflows/release.yml` publishes on `v*` tags via trusted publishing
+  (OIDC, environment `pypi`) + creates a GitHub Release. I CANNOT publish to PyPI
+  for the user (needs their account/trusted-publisher setup).
+
+## Remaining (v1.0)
 
 - `diff`, grounding judge, pytest plugin, native OTLP/protobuf ingest, HTML
   reliability dashboard, stable API.

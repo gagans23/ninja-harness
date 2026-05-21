@@ -33,6 +33,7 @@ from ninja_harness.schemas import (
     HumanLabel,
     SuiteResult,
 )
+from ninja_harness.serve import run_server
 from ninja_harness.solver import CommandSolver, ScriptedSolver
 from ninja_harness.statistics import aggregate_results
 
@@ -460,6 +461,28 @@ def gate(
 
     if not gate_result.passed:
         raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# serve command — local web playground
+# ---------------------------------------------------------------------------
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Host to bind (local only by default)."),
+    port: int = typer.Option(8000, help="Port to bind."),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Open a browser tab on start."),
+) -> None:
+    """Launch a local web playground to paste a trace and evaluate it in the browser."""
+    console.print(
+        f"[bold]Starting Ninja Harness playground[/] at "
+        f"[cyan]http://{host}:{port}/[/]  [dim](Ctrl+C to stop)[/]"
+    )
+    try:
+        run_server(host=host, port=port, open_browser=open_browser)
+    except OSError as exc:
+        console.print(f"[bold red]Could not start server:[/] {exc}")
+        raise typer.Exit(1) from exc
 
 
 # ---------------------------------------------------------------------------

@@ -198,6 +198,12 @@ def test_run_command_requires_solver() -> None:
     assert "solver-cmd" in result.output or "replay" in result.output
 
 
+def test_serve_command_registered() -> None:
+    result = runner.invoke(app, ["serve", "--help"])
+    assert result.exit_code == 0
+    assert "playground" in result.output.lower()
+
+
 def test_view_command_writes_html(tmp_path: Path) -> None:
     out = tmp_path / "trace.html"
     result = runner.invoke(app, ["view", "--trace", TRACE, "--case", CASE, "-o", str(out)])

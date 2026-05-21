@@ -48,16 +48,25 @@ Goal → Plan → Tool Call → Observation → Handoff → Guardrail → Recove
 Requires Python 3.11+.
 
 ```bash
+# From PyPI (once published)
+pip install ninja-harness
+
+# Try it without installing
+pipx run ninja-harness --help        # or:  uvx ninja-harness --help
+
+# From source (for development)
 git clone https://github.com/gagans23/ninja-harness.git
 cd ninja-harness
 pip install -e ".[dev]"
 ```
 
-Or install from PyPI (coming soon):
+### Try it in your browser (no setup)
 
 ```bash
-pip install ninja-harness
+ninja-harness serve            # opens a local playground at http://127.0.0.1:8000
 ```
+
+Paste an agent trace (any supported format), optionally add an eval case, and see the certification, metric breakdown, and full trajectory rendered live — using the exact same scoring as the CLI. Pure standard library, runs locally only.
 
 ---
 
@@ -300,6 +309,7 @@ See [docs/roadmap.md](docs/roadmap.md) for full details.
 **v0.3** ✅ — Reliability stats (`pass^k`), OTel ingest, OWASP/ATLAS mapping, SARIF/JUnit, policy gate, judge bias mitigation
 **v0.4** ✅ — Closed loop: `run` (solver + sandbox + reproducibility manifest)
 **v0.5** ✅ — Benchmark loaders (SWE-bench/τ-bench/GAIA), multi-turn user simulator, HTML trace viewer, judge calibration
+**v0.6** ✅ — `serve` local web playground, PyPI packaging + release workflow
 **v1.0** — `diff`, pytest plugin, OTLP ingest, dashboards, stable API, governance templates
 
 ---

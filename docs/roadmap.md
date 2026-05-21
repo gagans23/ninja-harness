@@ -67,7 +67,17 @@ Turned Ninja from a trace scorer into a full harness that *runs* agents.
 
 ---
 
-## v0.6 / v1.0 — Polish & Stabilize
+## v0.6 — Adoption & Distribution ✅
+
+Lower the barrier to download, try, and use.
+
+- [x] **`ninja-harness serve`** — zero-dependency local web playground (stdlib only): paste a trace, evaluate in the browser, see certification + trajectory live
+- [x] **PyPI packaging** — `pip install ninja-harness` / `pipx run` / `uvx`; `twine check` passes
+- [x] **Release workflow** — tag-triggered build + PyPI trusted publishing (OIDC) + GitHub Release
+
+---
+
+## v1.0 — Polish & Stabilize
 
 - [ ] `ninja-harness diff` — rich comparison of two results
 - [ ] Judge plug-in extended to the Grounding metric
