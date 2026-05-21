@@ -285,17 +285,20 @@ async function boot() {
   try {
     setStatus("Loading Python runtime…");
     const pyodide = await loadPyodide();
-    setStatus("Installing dependencies…");
-    await pyodide.loadPackage("micropip");
-    const micropip = pyodide.pyimport("micropip");
-    await micropip.install(["pydantic", "pyyaml", "python-dateutil"]);
-    setStatus("Installing Ninja Harness…");
+    // Dependencies come from Pyodide's own CDN (version-matched, no PyPI).
+    setStatus("Loading dependencies (pydantic, pyyaml)…");
     try {
-      await micropip.install.callKwargs(WHEEL_URL, { deps: false });
+      await pyodide.loadPackage(["micropip", "pydantic", "pyyaml"]);
     } catch (e) {
-      console.error("Wheel install failed, trying PyPI:", e);
-      await micropip.install.callKwargs("ninja-harness", { deps: false });
+      console.warn("loadPackage fallback to micropip for deps:", e);
+      await pyodide.loadPackage("micropip");
+      await pyodide.pyimport("micropip").install(["pydantic", "pyyaml"]);
     }
+    setStatus("Installing Ninja Harness…");
+    const micropip = pyodide.pyimport("micropip");
+    // Local, same-origin wheel only. deps already loaded → deps=false.
+    // No PyPI fallback: ninja-harness is loaded from the bundled wheel here.
+    await micropip.install.callKwargs([WHEEL_URL], { deps: false });
     const css = pyodide.runPython(PY_SETUP);
     const style = document.createElement("style");
     style.textContent = css;
@@ -306,7 +309,10 @@ async function boot() {
   } catch (err) {
     setStatus("Failed to load runtime", "err");
     resultsEl.innerHTML = '<div class="err-box">Could not initialize the in-browser runtime.\\n' +
-      'This page must be served over http(s) (e.g. GitHub Pages), not opened from a file://.\\n\\n' + String(err) + '</div>';
+      'Serve over http(s) (GitHub Pages), not file://. Try a hard refresh (Cmd/Ctrl+Shift+R).\\n' +
+      'Wheel: ' + WHEEL_URL + '\\n\\n' + String(err) + '</div>';
+    booted = false; // allow retry
+    document.getElementById("launchRow").style.display = "block"; // re-show launch button
   }
 }
 
