@@ -82,8 +82,17 @@ def test_all_metrics_present(aggregator: NinjaScoreAggregator) -> None:
         "efficiency",
         "recovery",
         "stability",
+        "output_hygiene",  # reported separately (not in the weighted composite)
     }
     assert metric_names == expected
+
+
+def test_output_hygiene_does_not_affect_composite() -> None:
+    """Adding output_hygiene must not change the weighted NARI score."""
+    from ninja_harness.scoring.ninja_score import _WEIGHTS
+
+    assert "output_hygiene" not in _WEIGHTS  # weight 0 → reported only
+    assert abs(sum(_WEIGHTS.values()) - 1.0) < 1e-9
 
 
 def test_grade_a_for_high_score() -> None:

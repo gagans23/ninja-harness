@@ -198,6 +198,26 @@ def test_run_command_requires_solver() -> None:
     assert "solver-cmd" in result.output or "replay" in result.output
 
 
+def test_run_repeat_reliability(tmp_path: Path) -> None:
+    base = tmp_path / "base.json"
+    result = runner.invoke(
+        app,
+        ["run", "--task", TASK, "--solver-cmd", f"{sys.executable} {ECHO_AGENT}",
+         "--repeat", "3", "--save-baseline", str(base), "--format", "json"],
+    )
+    assert result.exit_code in (0, 2)
+    assert "reliability" in result.output or "pass_hat_k" in result.output
+    assert base.exists()
+
+
+def test_suite_summary_format() -> None:
+    result = runner.invoke(
+        app, ["suite", "--suite", "examples/scenarios/suite.yaml", "--format", "summary"]
+    )
+    assert result.exit_code in (0, 2)
+    assert "Ninja Harness eval" in result.output
+
+
 def test_serve_command_registered() -> None:
     result = runner.invoke(app, ["serve", "--help"])
     assert result.exit_code == 0

@@ -1,0 +1,14 @@
+{
+  "agent_name": "BrowserAgent",
+  "task": "Open Hacker News, extract the top stories, and report a concise summary.",
+  "final_output": "Browser demo completed: opened Hacker News, extracted the top 5 stories, searched DuckDuckGo for context, and saved a screenshot and report. Top themes today: open-source AI tooling and developer productivity. Full headlines and logs are in the saved report artifact.",
+  "steps": [
+    {"agent_name": "BrowserAgent", "step_type": "action", "output": "Opened Hacker News.", "status": "completed"},
+    {"agent_name": "BrowserAgent", "step_type": "action", "output": "Extracted 5 stories; saved screenshot + report.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "browser_open", "arguments": {"url": "https://news.ycombinator.com"}, "result": "ok", "status": "success"},
+    {"tool_name": "save_artifact", "arguments": {"name": "report.md"}, "result": "saved", "status": "success"}
+  ],
+  "metadata": {"scenario": "browser_clean"}
+}

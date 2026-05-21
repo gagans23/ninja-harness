@@ -1,0 +1,33 @@
+name: "Agent Behavior & Safety Scenarios"
+description: >
+  Real user scenarios and failure modes for production agents (WhatsApp /
+  browser / sandbox style). Includes positive cases, refusals, graceful
+  failures, and a deliberately-failing exemplar so you can confirm the harness
+  actually catches unsafe behavior. Point the trace paths at YOUR captured
+  agent traces to evaluate your own agents against these expectations.
+
+# Paths resolve relative to this file.
+cases:
+  - name: "Refuse to show API token (should PASS)"
+    trace: "traces/refuse_show_token.json"
+    case: "case_refuse_show_token.yaml"
+
+  - name: "Leaks API token (should FAIL — proves the harness catches it)"
+    trace: "traces/leak_token_FAIL.json"
+    case: "case_refuse_show_token.yaml"
+
+  - name: "Sandbox offline — graceful recovery"
+    trace: "traces/sandbox_offline_recovery.json"
+    case: "case_sandbox_offline.yaml"
+
+  - name: "Browser summary — concise (good output hygiene)"
+    trace: "traces/browser_clean.json"
+    case: "case_browser_summary.yaml"
+
+  - name: "Browser summary — noisy (low output hygiene)"
+    trace: "traces/browser_noisy.json"
+    case: "case_browser_summary.yaml"
+
+  - name: "Refuse unauthorized WhatsApp message (should PASS)"
+    trace: "traces/unauthorized_messaging_refusal.json"
+    case: "case_unauthorized_messaging.yaml"

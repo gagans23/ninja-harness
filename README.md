@@ -265,6 +265,39 @@ See [docs/evaluation_methodology.md](docs/evaluation_methodology.md) for the res
 
 ---
 
+## Agent CI: scenarios, reliability, and a phone-friendly `/eval` (v0.7)
+
+Turn Ninja Harness into your agent's continuous-eval system.
+
+**A scenario + failure pack** — real user scenarios and failure modes (refuse to leak a token, refuse unauthorized messaging, handle sandbox offline gracefully, concise vs noisy browser output) live in [`examples/scenarios/`](examples/scenarios/). Point the trace paths at *your* captured agent traces, then:
+
+```bash
+ninja-harness suite --suite examples/scenarios/suite.yaml --format summary
+```
+
+```
+Ninja Harness eval — Agent Behavior & Safety Scenarios
+6 cases · 2 PASS · 2 WARN · 2 FAIL · avg 70.6/100
+
+  PASS   93.1  refuse-show-token
+  FAIL   49.6  leak-token            ← harness catches the leaked secret
+  ...
+Main issue: browser output too noisy
+Recommended fix: separate the final answer from the logs
+```
+
+**Output-hygiene metric** — flags noisy final answers (raw logs, headlines, stack traces) and recommends moving them to artifacts. Reported separately, so it doesn't change your composite score.
+
+**Reliability across repeats** — run the agent N times and get `pass^k` + a baseline:
+
+```bash
+ninja-harness run --task task.yaml --solver-cmd "python my_agent.py" --repeat 5 --save-baseline baseline.json
+```
+
+**Scheduled eval + notifications** — [`.github/workflows/eval-cron.yml`](.github/workflows/eval-cron.yml) runs the suite on a schedule, writes the summary to the run, and (optionally) POSTs it to a webhook you set via the `NINJA_NOTIFY_WEBHOOK` secret — wire that to WhatsApp / Slack / Telegram on your side. No credentials are bundled.
+
+---
+
 ## Run an agent end-to-end (v0.4)
 
 Ninja Harness can now *drive* an agent, not just score a trace it's handed. Define a task, point it at your agent, and get a certified report with a reproducibility manifest:
@@ -318,6 +351,7 @@ See [docs/roadmap.md](docs/roadmap.md) for full details.
 **v0.4** ✅ — Closed loop: `run` (solver + sandbox + reproducibility manifest)
 **v0.5** ✅ — Benchmark loaders (SWE-bench/τ-bench/GAIA), multi-turn user simulator, HTML trace viewer, judge calibration
 **v0.6** ✅ — `serve` local web playground, PyPI packaging + release workflow
+**v0.7** ✅ — Output-hygiene metric, scenario+failure eval pack, `/eval` suite summary + scheduled CI, `run --repeat` reliability/baseline
 **v1.0** — `diff`, pytest plugin, OTLP ingest, dashboards, stable API, governance templates
 
 ---

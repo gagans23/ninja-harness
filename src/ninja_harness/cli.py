@@ -22,6 +22,7 @@ from ninja_harness.report import (
     generate_markdown_report,
     generate_suite_json_report,
     generate_suite_markdown_report,
+    generate_suite_summary,
     save_report,
 )
 from ninja_harness.reporters import evaluation_to_junit, render_html, to_sarif
@@ -287,7 +288,7 @@ def suite(
     suite: Path = typer.Option(..., help="Path to a suite YAML/JSON file."),
     use_async: bool = typer.Option(False, "--async", help="Evaluate cases concurrently."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Save suite JSON results."),
-    format: str = typer.Option("rich", help="Output format: rich | json | markdown."),
+    format: str = typer.Option("rich", help="Output format: rich | json | markdown | summary."),
 ) -> None:
     """Run an evaluation suite over multiple trace/case pairs."""
     runner = SuiteRunner()
@@ -302,6 +303,9 @@ def suite(
         console.print_json(generate_suite_json_report(suite_result))
     elif format == "markdown":
         console.print(generate_suite_markdown_report(suite_result))
+    elif format == "summary":
+        # Plain text (phone/webhook friendly) — print without Rich markup.
+        print(generate_suite_summary(suite_result))
     else:
         _render_rich_suite(suite_result)
 
@@ -327,7 +331,11 @@ def run(
         None, help="Replay a captured trace JSON instead of running an agent (ScriptedSolver)."
     ),
     seed: int | None = typer.Option(None, help="Seed recorded in the manifest and applied to the process."),
-    output: Path | None = typer.Option(None, "--output", "-o", help="Save the full RunReport JSON."),
+    repeat: int = typer.Option(1, help="Run the agent N times and report reliability (pass@k, pass^k)."),
+    save_baseline: Path | None = typer.Option(
+        None, help="Save the best run's RunReport as a baseline for regression checks."
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Save the full RunReport JSON (single run)."),
     format: str = typer.Option("rich", help="Output format: rich | json."),
 ) -> None:
     """Drive an agent against a task, capture its trace, evaluate, and certify."""
@@ -348,28 +356,55 @@ def run(
         raise typer.Exit(1)
 
     executor = TaskExecutor()
+    reports: list = []
     try:
-        report = executor.run(task_spec, solver, seed=seed)
+        for i in range(max(1, repeat)):
+            run_seed = seed if (seed is None or repeat == 1) else seed + i
+            reports.append(executor.run(task_spec, solver, seed=run_seed))
     except (RuntimeError, ValueError, TypeError) as exc:
         console.print(f"[bold red]Run failed:[/] {exc}")
         raise typer.Exit(1) from exc
 
+    # Single-run path (default).
+    if repeat == 1:
+        report = reports[0]
+        if format == "json":
+            console.print_json(report.model_dump_json(indent=2))
+        else:
+            _render_rich_result(report.result, report.run)
+            m = report.manifest
+            console.print(
+                f"\n[dim]Manifest:[/] solver={m.solver} sandbox={m.sandbox} "
+                f"seed={m.seed} trace_sha256={m.trace_sha256[:12]}… "
+                f"git={(m.git_sha or 'n/a')[:8]}"
+            )
+        if output:
+            save_report(report.model_dump_json(indent=2), str(output))
+            console.print(f"[dim]Run report saved to:[/] {output}")
+        if save_baseline:
+            save_report(generate_json_report(report.result), str(save_baseline))
+            console.print(f"[dim]Baseline saved to:[/] {save_baseline}")
+        if report.result.certification == "FAIL":
+            raise typer.Exit(2)
+        return
+
+    # Repeat path → reliability aggregation.
+    results = [r.result for r in reports]
+    agg = aggregate_results(results, task_label=task_spec.task_id)
     if format == "json":
-        console.print_json(report.model_dump_json(indent=2))
+        console.print_json(agg.model_dump_json(indent=2))
     else:
-        _render_rich_result(report.result, report.run)
-        m = report.manifest
-        console.print(
-            f"\n[dim]Manifest:[/] solver={m.solver} sandbox={m.sandbox} "
-            f"seed={m.seed} trace_sha256={m.trace_sha256[:12]}… "
-            f"git={(m.git_sha or 'n/a')[:8]}"
-        )
+        _render_rich_aggregate(agg)
 
+    best = max(reports, key=lambda r: r.result.ninja_score)
+    if save_baseline:
+        save_report(generate_json_report(best.result), str(save_baseline))
+        console.print(f"[dim]Baseline (best of {repeat}) saved to:[/] {save_baseline}")
     if output:
-        save_report(report.model_dump_json(indent=2), str(output))
-        console.print(f"[dim]Run report saved to:[/] {output}")
+        save_report(agg.model_dump_json(indent=2), str(output))
+        console.print(f"[dim]Aggregate saved to:[/] {output}")
 
-    if report.result.certification == "FAIL":
+    if agg.verdict == "UNRELIABLE":
         raise typer.Exit(2)
 
 

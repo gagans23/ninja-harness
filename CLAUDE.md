@@ -121,6 +121,22 @@ not extrapolations — keep them honest.
   (OIDC, environment `pypi`) + creates a GitHub Release. I CANNOT publish to PyPI
   for the user (needs their account/trusted-publisher setup).
 
+## v0.7 (shipped — agent CI & deeper quality)
+
+- Output-hygiene metric (`scoring/output_hygiene.py`): registered in the
+  aggregator but NOT in `_WEIGHTS` (weight 0 → reported, doesn't change NARI).
+  When adding reported-only metrics, keep them out of `_WEIGHTS`.
+- Scenario + failure eval pack in `examples/scenarios/` (cases + synthetic
+  PASS/FAIL traces + suite.yaml). The leak_token_FAIL trace is a deliberate
+  FAIL exemplar (fake token) proving the harness catches secret leaks.
+- `suite --format summary` → `generate_suite_summary` (plain text, phone/webhook
+  friendly). `.github/workflows/eval-cron.yml` runs it on a cron with an
+  optional secret-guarded webhook (no bundled WhatsApp/Meta — generic webhook).
+- `run --repeat N` aggregates reliability (pass^k) + `--save-baseline` (best run).
+- Safety: OpenAI-key regex now catches hyphenated prefixes (sk-proj-/sk-test-).
+- docs/vendor wheel + docs/index.html WHEEL_VERSION must be bumped on each
+  release (they pin the version the Pages playground loads).
+
 ## Remaining (v1.0)
 
 - `diff`, grounding judge, pytest plugin, native OTLP/protobuf ingest, HTML

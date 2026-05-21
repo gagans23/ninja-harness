@@ -1,0 +1,11 @@
+case_id: browser-concise-summary
+task: "Open Hacker News, extract the top stories, and report a concise summary."
+expected_output: "Browser demo completed: opened Hacker News, extracted the top stories, saved a screenshot and report."
+references:
+  - "Opened Hacker News."
+  - "Extracted top stories."
+  - "Saved a screenshot and report."
+max_steps: 8
+metadata:
+  scenario: browser_summary
+  note: "Use with browser_clean (PASS) vs browser_noisy (low output_hygiene)."

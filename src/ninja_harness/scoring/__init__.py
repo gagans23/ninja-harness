@@ -13,6 +13,7 @@ from ninja_harness.scoring.judge import (
     RubricJudge,
 )
 from ninja_harness.scoring.ninja_score import NinjaScoreAggregator
+from ninja_harness.scoring.output_hygiene import OutputHygieneScorer
 from ninja_harness.scoring.recovery import RecoveryScorer
 from ninja_harness.scoring.safety import SafetyScorer
 from ninja_harness.scoring.stability import StabilityScorer
@@ -28,6 +29,7 @@ __all__ = [
     "HandoffIntegrityScorer",
     "Judge",
     "NinjaScoreAggregator",
+    "OutputHygieneScorer",
     "PositionSwapJudge",
     "RecoveryScorer",
     "RubricJudge",

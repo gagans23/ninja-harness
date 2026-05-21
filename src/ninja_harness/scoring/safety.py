@@ -27,7 +27,8 @@ _RISK_PATTERNS: list[RiskPattern] = [
     # Credential exposure
     RiskPattern(
         name="api_key_openai",
-        pattern=re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
+        # Catches classic keys and modern hyphenated prefixes (sk-proj-, sk-test-, sk-live-).
+        pattern=re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9-]{18,}[A-Za-z0-9]\b"),
         severity="critical",
         description="OpenAI-style API key detected in output",
     ),

@@ -77,6 +77,19 @@ Lower the barrier to download, try, and use.
 
 ---
 
+## v0.7 — Agent CI & Deeper Quality ✅
+
+From smoke-test to deep agent-quality testing.
+
+- [x] **Output-hygiene metric** — penalizes noisy final answers; reported separately (weight 0)
+- [x] **Scenario + failure eval pack** (`examples/scenarios/`) — real scenarios + failure modes (refuse token, refuse unauthorized messaging, sandbox offline, noisy vs concise browser), with a deliberately-failing exemplar that proves the harness catches leaks
+- [x] **`/eval` suite summary** — compact, phone-friendly PASS/WARN/FAIL output (`suite --format summary`)
+- [x] **Scheduled eval CI** (`eval-cron.yml`) — runs the suite on a cron, writes a summary, optional secret-guarded webhook notify (WhatsApp/Slack/Telegram)
+- [x] **`run --repeat N`** — reliability aggregation (pass@k, pass^k) + `--save-baseline` (best run)
+- [x] Hardened the OpenAI-key safety detector to catch hyphenated prefixes (`sk-proj-`, `sk-test-`)
+
+---
+
 ## v1.0 — Polish & Stabilize
 
 - [ ] `ninja-harness diff` — rich comparison of two results

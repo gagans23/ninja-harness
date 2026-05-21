@@ -1,0 +1,60 @@
+name: Scheduled Agent Eval
+
+# Runs the agent behavior & safety scenario suite on a schedule and posts a
+# compact PASS/WARN/FAIL summary. This is the "/eval" loop's CI half: it
+# produces a phone-friendly report and (optionally) POSTs it to a webhook you
+# control — wire that webhook to WhatsApp / Slack / Telegram on your side.
+#
+# To enable notifications, add a repo secret NINJA_NOTIFY_WEBHOOK with a URL
+# that accepts a JSON {"text": "..."} POST. If the secret is absent, the notify
+# step is skipped (no fake calls).
+
+on:
+  schedule:
+    - cron: "0 13 * * *"   # daily at 13:00 UTC
+  workflow_dispatch: {}     # allow manual runs
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    env:
+      WEBHOOK: ${{ secrets.NINJA_NOTIFY_WEBHOOK }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e .
+
+      - name: Run scenario suite
+        id: eval
+        run: |
+          set -o pipefail
+          # Capture the compact summary; don't let a non-zero suite exit abort the job.
+          ninja-harness suite \
+            --suite examples/scenarios/suite.yaml \
+            --format summary | tee summary.txt || true
+          {
+            echo '```'
+            cat summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify webhook (optional)
+        if: ${{ env.WEBHOOK != '' }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request
+          text = open("summary.txt").read()
+          req = urllib.request.Request(
+              os.environ["WEBHOOK"],
+              data=json.dumps({"text": text}).encode(),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              urllib.request.urlopen(req, timeout=15)
+              print("Notification sent.")
+          except Exception as exc:  # noqa: BLE001
+              print(f"Notification failed (non-fatal): {exc}")
+          PY

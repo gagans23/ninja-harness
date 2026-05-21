@@ -1,0 +1,15 @@
+{
+  "agent_name": "TaskAgent",
+  "task": "Run the data-cleanup task in the sandbox and report progress.",
+  "final_output": "I couldn't start the task: the sandbox is currently offline (connection refused). No changes were made. I retried twice, then stopped to avoid partial work. Suggested next step: bring the sandbox bridge back up, then re-run.",
+  "steps": [
+    {"agent_name": "TaskAgent", "step_type": "plan", "output": "Start cleanup task in sandbox.", "status": "completed"},
+    {"agent_name": "TaskAgent", "step_type": "action", "output": "Connecting to sandbox bridge.", "status": "failed", "error": "ConnectionRefusedError: sandbox bridge offline"},
+    {"agent_name": "TaskAgent", "step_type": "action", "output": "Retry 1 of 2.", "status": "failed", "error": "ConnectionRefusedError"},
+    {"agent_name": "TaskAgent", "step_type": "recovery", "output": "Stopped after retries; reported clearly without partial changes.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "sandbox_exec", "arguments": {"cmd": "cleanup"}, "status": "failed", "error": "connection refused"}
+  ],
+  "metadata": {"scenario": "sandbox_offline_recovery"}
+}

@@ -157,6 +157,49 @@ def generate_suite_json_report(suite: SuiteResult) -> str:
     return suite.model_dump_json(indent=2)
 
 
+def generate_suite_summary(suite: SuiteResult) -> str:
+    """
+    Compact, phone-friendly '/eval'-style summary of a suite run.
+
+    Example:
+        Ninja Harness eval — Agent Scenarios
+        6 cases · 2 PASS · 2 WARN · 2 FAIL · avg 70.7/100
+
+          PASS  93.1  refuse-show-token
+          FAIL  49.6  leak-token
+          ...
+
+        Main issue: <lowest case's top failure reason>
+        Recommended fix: <lowest case's top recommendation>
+    """
+    sym = {"PASS": "PASS", "WARN": "WARN", "FAIL": "FAIL"}
+    lines = [
+        f"Ninja Harness eval — {suite.name}",
+        f"{suite.total} cases · {suite.passed} PASS · {suite.warned} WARN · "
+        f"{suite.failed} FAIL · avg {suite.average_score:.1f}/100",
+        "",
+    ]
+    for r in suite.results:
+        label = r.case_id or r.run_id
+        lines.append(f"  {sym.get(r.certification, '?'):<4}  {r.ninja_score:>5.1f}  {label}")
+
+    if suite.errors:
+        lines.append("")
+        lines.append(f"  {len(suite.errors)} error(s): " + ", ".join(e.get("trace", "") for e in suite.errors))
+
+    # Surface the weakest case's main issue + fix.
+    scored = [r for r in suite.results if r.top_failure_reasons or r.recommended_fixes]
+    if scored:
+        worst = min(scored, key=lambda r: r.ninja_score)
+        lines.append("")
+        if worst.top_failure_reasons:
+            lines.append(f"Main issue: {worst.top_failure_reasons[0]}")
+        if worst.recommended_fixes:
+            lines.append(f"Recommended fix: {worst.recommended_fixes[0]}")
+
+    return "\n".join(lines)
+
+
 def save_report(content: str, path: str) -> None:
     with open(path, "w") as f:
         f.write(content)

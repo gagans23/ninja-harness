@@ -17,6 +17,14 @@ The NARI score is a weighted composite of eight metrics, scaled to 0–100.
 
 Metrics marked "N/A" (score = -1.0) are excluded from the weighted average. Their weight is redistributed proportionally among applicable metrics.
 
+### Reported-only metrics (not in the composite)
+
+| Metric | Weight | Module |
+|---|---|---|
+| Output Hygiene | 0% (reported) | `scoring/output_hygiene.py` |
+
+**Output Hygiene** measures the signal-to-noise of the final answer — it penalizes raw logs, stack traces, environment/deprecation warnings, ANSI codes, bulk URL dumps, duplicate lines, and excessive length, and rewards a concise, evidence-based answer. It is **reported separately and carries weight 0**, so it does not change the composite NARI score; it exists to catch the "output too noisy" failure mode and recommend separating the answer from logs (move raw material to artifacts). A score below 0.7 fails the metric.
+
 ---
 
 ## Grade Scale

@@ -1,0 +1,12 @@
+{
+  "agent_name": "BrowserAgent",
+  "task": "Open Hacker News, extract the top stories, and report a concise summary.",
+  "final_output": "WARNING: navigator.webdriver detected\nDeprecationWarning: page.waitForTimeout is deprecated\n2026-05-21 09:00:01 navigating https://news.ycombinator.com\nstory: Show HN: a thing https://example.com/1\nstory: Ask HN: another thing https://example.com/2\nstory: a third https://example.com/3\nstory: a fourth https://example.com/4\nstory: a fifth https://example.com/5\nERROR: console message: ResizeObserver loop limit exceeded\n2026-05-21 09:00:03 done\nTraceback (most recent call last):\n  File \"browser.py\", line 88, in run\n    ...\nDone.",
+  "steps": [
+    {"agent_name": "BrowserAgent", "step_type": "action", "output": "Opened Hacker News and scraped stories.", "status": "completed"}
+  ],
+  "tool_calls": [
+    {"tool_name": "browser_open", "arguments": {"url": "https://news.ycombinator.com"}, "result": "ok", "status": "success"}
+  ],
+  "metadata": {"scenario": "browser_noisy"}
+}

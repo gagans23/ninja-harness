@@ -14,6 +14,7 @@ from ninja_harness.scoring.goal_success import GoalSuccessScorer
 from ninja_harness.scoring.grounding import GroundingScorer
 from ninja_harness.scoring.handoff_integrity import HandoffIntegrityScorer
 from ninja_harness.scoring.judge import Judge
+from ninja_harness.scoring.output_hygiene import OutputHygieneScorer
 from ninja_harness.scoring.recovery import RecoveryScorer
 from ninja_harness.scoring.safety import SafetyScorer
 from ninja_harness.scoring.stability import StabilityScorer
@@ -57,6 +58,8 @@ class NinjaScoreAggregator:
             EfficiencyScorer(),
             RecoveryScorer(),
             StabilityScorer(baseline_path=baseline_path),
+            # Reported separately — not part of the weighted composite (weight 0).
+            OutputHygieneScorer(),
         ]
 
     def evaluate(
