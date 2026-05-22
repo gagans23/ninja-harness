@@ -18,7 +18,7 @@ from ninja_harness.schemas import (
     ToolSpec,
 )
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     "AgentRun",
     "AgentStep",

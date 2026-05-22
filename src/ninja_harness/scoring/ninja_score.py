@@ -53,7 +53,7 @@ class NinjaScoreAggregator:
             GoalSuccessScorer(judge=judge),
             ToolCallF1Scorer(),
             HandoffIntegrityScorer(),
-            GroundingScorer(),
+            GroundingScorer(judge=judge),
             SafetyScorer(),
             EfficiencyScorer(),
             RecoveryScorer(),

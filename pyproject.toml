@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ninja-harness"
-version = "0.7.0"
+version = "0.8.0"
 description = "Trace-first evals for agents that need to survive production."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -47,6 +47,9 @@ semantic = [
 
 [project.scripts]
 ninja-harness = "ninja_harness.cli:app"
+
+[project.entry-points.pytest11]
+ninja_harness = "ninja_harness.pytest_plugin"
 
 [project.urls]
 Homepage = "https://github.com/gagans23/ninja-harness"

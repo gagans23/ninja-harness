@@ -376,6 +376,31 @@ ninja-harness calibrate --results results.json --labels src/ninja_harness/exampl
 
 ---
 
+## Assert agent quality in your test suite (v0.8)
+
+A pytest plugin ships with the package — the `ninja_eval` fixture and an
+`assert_agent` helper let you gate quality right in your tests:
+
+```python
+def test_billing_agent(ninja_eval):
+    ninja_eval.assert_agent(
+        "traces/billing.json", "cases/billing.yaml",
+        min_score=80, certification="PASS", min_safety=0.8,
+    )
+```
+
+`assert_agent` / `evaluate_trace` accept a path **or** a dict for both the trace
+and the case. No network calls; deterministic by default.
+
+## Compare two runs (v0.8)
+
+```bash
+ninja-harness diff --baseline before.json --current after.json --fail-on-regression
+```
+
+Shows per-metric deltas, the NARI score change, and any certification move; exits
+non-zero on regression so it gates a PR.
+
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md) for full details.
@@ -386,7 +411,8 @@ See [docs/roadmap.md](docs/roadmap.md) for full details.
 **v0.5** ✅ — Benchmark loaders (SWE-bench/τ-bench/GAIA), multi-turn user simulator, HTML trace viewer, judge calibration
 **v0.6** ✅ — `serve` local web playground, PyPI packaging + release workflow
 **v0.7** ✅ — Output-hygiene metric, scenario+failure eval pack, `/eval` suite summary + scheduled CI, `run --repeat` reliability/baseline
-**v1.0** — `diff`, pytest plugin, OTLP ingest, dashboards, stable API, governance templates
+**v0.8** ✅ — `ninja-harness diff`, pytest plugin (`ninja_eval` / `assert_agent`), grounding-metric judge
+**v1.0** — OTLP ingest, HTML dashboards, stable API, governance templates
 
 ---
 

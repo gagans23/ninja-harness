@@ -344,3 +344,33 @@ class CalibrationReport(BaseModel):
     spearman: float | None = None
     cohen_kappa: float | None = None  # binary pass/fail at 0.5 threshold
     notes: list[str] = Field(default_factory=list)
+
+
+class MetricDelta(BaseModel):
+    """Change in one metric between a baseline and a current run."""
+
+    name: str
+    baseline_score: float | None = None
+    current_score: float | None = None
+    delta: float | None = None
+    status: str = "unchanged"  # improved | regressed | unchanged | added | removed | na
+
+
+class DiffReport(BaseModel):
+    """Comparison of two EvaluationResults (baseline vs current)."""
+
+    baseline_run_id: str
+    current_run_id: str
+    baseline_score: float
+    current_score: float
+    score_delta: float
+    baseline_certification: str
+    current_certification: str
+    certification_changed: bool
+    metric_deltas: list[MetricDelta] = Field(default_factory=list)
+    regressions: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+
+    @property
+    def has_regression(self) -> bool:
+        return bool(self.regressions) or self.score_delta < 0

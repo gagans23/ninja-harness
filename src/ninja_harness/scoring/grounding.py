@@ -6,6 +6,7 @@ import re
 
 from ninja_harness.schemas import AgentRun, EvaluationCase, MetricResult
 from ninja_harness.scoring.base import BaseScorer
+from ninja_harness.scoring.judge import Judge
 
 _PASS_THRESHOLD = 0.5
 
@@ -32,14 +33,21 @@ class GroundingScorer(BaseScorer):
     """
     Measures how well the final output is grounded in provided reference documents.
 
-    v0.1: deterministic keyword-coverage approach.
+    Default (deterministic) approach:
     - If references are provided: score = fraction of output key terms that appear
       in at least one reference document.
     - If no references: penalise outputs that contain claim markers (e.g. "studies
       show", absolute quantifiers) without supporting documents.
 
-    Designed for RAGAS / LLM-judge integration in v0.2 without interface changes.
+    Judge plug-in (v1.0): pass a `judge` to assess semantic support instead of
+    keyword coverage. When a judge is supplied AND references exist, the grounding
+    score is `judge.compare(final_output, joined_references)` — letting an NLI or
+    LLM-as-judge decide whether the output is entailed by the references. The
+    default (no judge) is unchanged, so existing scores are stable.
     """
+
+    def __init__(self, judge: Judge | None = None) -> None:
+        self._judge = judge
 
     @property
     def name(self) -> str:
@@ -58,6 +66,21 @@ class GroundingScorer(BaseScorer):
 
         if not output_tokens:
             return self._not_applicable("Final output contains no scoreable tokens.")
+
+        # Judge-based semantic grounding (only when a judge is supplied + refs exist).
+        if self._judge is not None and references:
+            score, details = self._judge.compare(run.final_output, " ".join(references))
+            passed = score >= _PASS_THRESHOLD
+            details = {"references_provided": True, "reference_count": len(references),
+                       "judge": getattr(self._judge, "name", "judge"), **details}
+            return MetricResult(
+                name=self.name, score=round(score, 4), passed=passed, details=details,
+                failure_reasons=([] if passed else
+                                 [f"Output not sufficiently supported by references "
+                                  f"(judge='{details['judge']}', score={score:.2f})."]),
+                recommendations=([] if passed else
+                                 ["Ensure factual claims are entailed by the provided references."]),
+            )
 
         if not references:
             claim_count = _count_claim_markers(run.final_output)

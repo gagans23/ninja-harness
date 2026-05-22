@@ -90,11 +90,14 @@ From smoke-test to deep agent-quality testing.
 
 ---
 
-## v1.0 — Polish & Stabilize
+## v0.8 — Dev-loop integration (shipped)
 
-- [ ] `ninja-harness diff` — rich comparison of two results
-- [ ] Judge plug-in extended to the Grounding metric
-- [ ] `pytest` plugin: `pytest --ninja-harness-trace trace.json`
+- [x] **`ninja-harness diff`** — per-metric deltas, score/cert change, regressions; `--fail-on-regression` for PRs
+- [x] **pytest plugin** — `ninja_eval` fixture + `assert_agent()` / `evaluate_trace()` helpers (auto-registered via the `pytest11` entry point)
+- [x] **Grounding-metric judge** — `GroundingScorer(judge=...)` assesses semantic support; deterministic default unchanged
+
+## v1.0 — Polish & Stabilize (remaining)
+
 - [ ] Native OTLP/protobuf span ingest (beyond the simplified JSON span list)
 - [ ] HTML reliability dashboard with trend charts across runs
 - [ ] Stable public API (no breaking changes in 1.x), governance report templates, community plugins

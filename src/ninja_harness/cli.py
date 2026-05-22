@@ -15,6 +15,7 @@ from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
 from ninja_harness.calibration import calibrate_from_results
 from ninja_harness.datasets.loader import load_task, load_trace
+from ninja_harness.diffing import diff_results
 from ninja_harness.policy import apply_policy, load_policy
 from ninja_harness.redteam import run_all_checks
 from ninja_harness.report import (
@@ -30,6 +31,7 @@ from ninja_harness.runner import EvaluationRunner, SuiteRunner, TaskExecutor
 from ninja_harness.schemas import (
     AgentRun,
     AggregateResult,
+    DiffReport,
     EvaluationResult,
     HumanLabel,
     SuiteResult,
@@ -596,6 +598,41 @@ def calibrate(
 
 
 # ---------------------------------------------------------------------------
+# diff command — compare two evaluation results
+# ---------------------------------------------------------------------------
+
+@app.command()
+def diff(
+    baseline: Path = typer.Option(..., help="Baseline EvaluationResult JSON."),
+    current: Path = typer.Option(..., help="Current EvaluationResult JSON."),
+    format: str = typer.Option("rich", help="Output format: rich | json."),
+    fail_on_regression: bool = typer.Option(
+        False, "--fail-on-regression", help="Exit non-zero if any metric regressed or score dropped."
+    ),
+) -> None:
+    """Compare two evaluation results (per-metric deltas, score, certification)."""
+    for p in (baseline, current):
+        if not p.exists():
+            console.print(f"[bold red]Error:[/] File not found: {p}")
+            raise typer.Exit(1)
+
+    with baseline.open() as f:
+        base = EvaluationResult.model_validate(json.load(f))
+    with current.open() as f:
+        curr = EvaluationResult.model_validate(json.load(f))
+
+    report = diff_results(base, curr)
+
+    if format == "json":
+        console.print_json(report.model_dump_json(indent=2))
+    else:
+        _render_rich_diff(report)
+
+    if fail_on_regression and report.has_regression:
+        raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
 # Rich rendering helpers
 # ---------------------------------------------------------------------------
 
@@ -723,6 +760,40 @@ def _render_rich_aggregate(agg: AggregateResult) -> None:
         console.print("\n[bold]Notes:[/]")
         for n in agg.notes:
             console.print(f"  • {n}")
+
+
+def _render_rich_diff(report: DiffReport) -> None:
+    arrow = "▲" if report.score_delta > 0 else ("▼" if report.score_delta < 0 else "=")
+    delta_style = "green" if report.score_delta > 0 else ("red" if report.score_delta < 0 else "dim")
+    cert_line = (
+        f"{report.baseline_certification} → {report.current_certification}"
+        if report.certification_changed else report.current_certification
+    )
+    console.print(
+        Panel(
+            f"  Score   : {report.baseline_score:.1f} → [bold]{report.current_score:.1f}[/]  "
+            f"[{delta_style}]{arrow} {report.score_delta:+.1f}[/]\n"
+            f"  Cert    : {cert_line}\n"
+            f"  Baseline: [dim]{report.baseline_run_id}[/]\n"
+            f"  Current : [dim]{report.current_run_id}[/]",
+            title="[bold]Ninja Harness Diff[/]",
+            border_style=delta_style,
+        )
+    )
+    table = Table("Metric", "Baseline", "Current", "Δ", "Status", box=box.SIMPLE_HEAVY)
+    status_style = {"improved": "green", "regressed": "red", "unchanged": "dim",
+                    "added": "cyan", "removed": "yellow", "na": "dim"}
+    for d in report.metric_deltas:
+        b = "—" if d.baseline_score is None else f"{d.baseline_score:.3f}"
+        c = "—" if d.current_score is None else f"{d.current_score:.3f}"
+        delta = "—" if d.delta is None else f"{d.delta:+.3f}"
+        st = status_style.get(d.status, "white")
+        table.add_row(d.name, b, c, delta, f"[{st}]{d.status}[/]")
+    console.print(table)
+    if report.regressions:
+        console.print(f"[red]Regressions:[/] {', '.join(report.regressions)}")
+    if report.improvements:
+        console.print(f"[green]Improvements:[/] {', '.join(report.improvements)}")
 
 
 if __name__ == "__main__":
