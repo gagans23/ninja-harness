@@ -40,6 +40,20 @@ ruff check src/ tests/ examples/ scripts/   # lint must be clean
 
 CI runs the same checks plus CLI smoke tests on Python 3.11/3.12.
 
+## How we work
+
+We follow the practices in **[docs/code-review.md](docs/code-review.md)** (adapted
+from Google's engineering practices). The short version:
+
+- **Small, self-contained changes** that do one thing (~100 lines is comfortable).
+- **Tests in the same change** as the logic they cover (tests are expected for all
+  changes); keep refactors separate from behavior changes.
+- **Good descriptions:** an imperative first line that stands alone, a blank line,
+  then a body explaining *why* (problem, approach, trade-offs, context).
+- **Don't break the build** — keep `pytest` + `ruff` green.
+- The reviewer's bar is **"does this definitely improve overall code health?"**,
+  not perfection.
+
 ## How to add things
 
 ### A new framework adapter
