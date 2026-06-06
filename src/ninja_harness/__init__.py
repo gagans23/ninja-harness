@@ -1,5 +1,12 @@
 """Ninja Harness — trace-first evals for agents that need to survive production."""
 
+from ninja_harness.export import (
+    build_example,
+    compress_run,
+    export_runs,
+    to_messages,
+    write_jsonl,
+)
 from ninja_harness.schemas import (
     AgentRun,
     AgentStep,
@@ -16,9 +23,11 @@ from ninja_harness.schemas import (
     TaskSpec,
     ToolCall,
     ToolSpec,
+    TrajectoryExample,
+    TrajectoryExportSummary,
 )
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 __all__ = [
     "AgentRun",
     "AgentStep",
@@ -35,5 +44,12 @@ __all__ = [
     "TaskSpec",
     "ToolCall",
     "ToolSpec",
+    "TrajectoryExample",
+    "TrajectoryExportSummary",
     "__version__",
+    "build_example",
+    "compress_run",
+    "export_runs",
+    "to_messages",
+    "write_jsonl",
 ]

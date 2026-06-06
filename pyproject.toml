@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ninja-harness"
-version = "0.8.0"
+version = "0.9.0"
 description = "Trace-first evals for agents that need to survive production."
 readme = "README.md"
 license = { file = "LICENSE" }

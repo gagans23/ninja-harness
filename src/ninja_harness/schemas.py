@@ -356,6 +356,37 @@ class MetricDelta(BaseModel):
     status: str = "unchanged"  # improved | regressed | unchanged | added | removed | na
 
 
+class TrajectoryExample(BaseModel):
+    """One graded agent run serialized for model training.
+
+    Ninja Harness *grades* runs; this turns the high-scoring ones into a curated
+    training example. The score/certification travel with the example so the
+    training set is honestly filtered, never fabricated.
+    """
+
+    run_id: str
+    task: str
+    ninja_score: float
+    certification: str
+    format: str  # messages | sft
+    messages: list[dict[str, Any]] = Field(default_factory=list)  # format == messages
+    prompt: str | None = None  # format == sft
+    completion: str | None = None  # format == sft
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TrajectoryExportSummary(BaseModel):
+    """Summary of a trajectory export: how many runs qualified vs. were filtered."""
+
+    total_candidates: int
+    exported: int
+    skipped: int
+    format: str
+    min_score: float
+    require_pass: bool
+    by_certification: dict[str, int] = Field(default_factory=dict)
+
+
 class DiffReport(BaseModel):
     """Comparison of two EvaluationResults (baseline vs current)."""
 

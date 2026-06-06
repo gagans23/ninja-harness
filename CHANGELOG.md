@@ -10,6 +10,19 @@ may introduce features; patch versions are fixes).
 - Repository community-health files (CONTRIBUTING, CODE_OF_CONDUCT, SECURITY,
   CHANGELOG, CITATION, issue/PR templates), README badges, and repo metadata.
 
+## [0.9.0] — 2026-06-06
+
+### Added
+- **Trajectory export** (`export.py` + `export` CLI) — turn *graded* agent runs
+  into a training-ready JSONL dataset. Honest curation: an example is only
+  written if its run clears a quality bar (certification PASS and/or a minimum
+  NARI score), and the score + certification travel with every example. Two
+  formats: `messages` (OpenAI-style chat with tool calls, for tool-calling SFT)
+  and `sft` (`{prompt, completion}`). Optional **compression** (`--max-steps`,
+  `--drop-observations`) trims low-signal steps without changing the task or the
+  final answer. `TrajectoryExample` / `TrajectoryExportSummary` schemas.
+  Deterministic, no LLM calls. Works off a `--suite` or a single `--trace`.
+
 ## [0.7.0] — 2026-05-21
 
 ### Added

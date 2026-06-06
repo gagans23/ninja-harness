@@ -401,6 +401,34 @@ ninja-harness diff --baseline before.json --current after.json --fail-on-regress
 Shows per-metric deltas, the NARI score change, and any certification move; exits
 non-zero on regression so it gates a PR.
 
+## Export graded runs as training data (v0.9)
+
+Ninja Harness *grades* runs — so the high-scoring ones are exactly the curated
+trajectories you want for fine-tuning the next agent. `export` turns them into a
+training-ready JSONL dataset, **honestly filtered**:
+
+```bash
+# Every PASS case in a suite → OpenAI-style tool-calling trajectories
+ninja-harness export --suite src/ninja_harness/examples/example_suite.yaml \
+  --out trajectories.jsonl
+
+# Keep PASS + WARN above 80, as flat {prompt, completion}, compressed
+ninja-harness export --suite suite.yaml --out sft.jsonl \
+  --no-require-pass --min-score 80 --format sft --drop-observations
+```
+
+```
+Exported 4/7 run(s) → trajectories.jsonl  (messages; min_score=0.0;
+require_pass=True; skipped=3; PASS:4 WARN:3)
+```
+
+An example is written **only if its run cleared the bar**, and the `ninja_score`
++ `certification` travel with every record — so the dataset is honestly curated,
+never fabricated. Formats: `messages` (chat + tool calls) and `sft`
+(`{prompt, completion}`). `--max-steps` / `--drop-observations` compress long
+trajectories without touching the task, the tools, or the final answer.
+Deterministic, no LLM calls.
+
 ## Roadmap
 
 See [docs/roadmap.md](docs/roadmap.md) for full details.
@@ -412,6 +440,7 @@ See [docs/roadmap.md](docs/roadmap.md) for full details.
 **v0.6** ✅ — `serve` local web playground, PyPI packaging + release workflow
 **v0.7** ✅ — Output-hygiene metric, scenario+failure eval pack, `/eval` suite summary + scheduled CI, `run --repeat` reliability/baseline
 **v0.8** ✅ — `ninja-harness diff`, pytest plugin (`ninja_eval` / `assert_agent`), grounding-metric judge
+**v0.9** ✅ — `ninja-harness export`: graded runs → training-ready JSONL (honest curation; `messages`/`sft`; compression)
 **v1.0** — OTLP ingest, HTML dashboards, stable API, governance templates
 
 ---

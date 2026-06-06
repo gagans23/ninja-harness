@@ -14,8 +14,9 @@ from rich.table import Table
 from ninja_harness import __version__
 from ninja_harness.adapters import detect_adapter
 from ninja_harness.calibration import calibrate_from_results
-from ninja_harness.datasets.loader import load_task, load_trace
+from ninja_harness.datasets.loader import load_suite, load_task, load_trace
 from ninja_harness.diffing import diff_results
+from ninja_harness.export import export_runs, write_jsonl
 from ninja_harness.policy import apply_policy, load_policy
 from ninja_harness.redteam import run_all_checks
 from ninja_harness.report import (
@@ -794,6 +795,72 @@ def _render_rich_diff(report: DiffReport) -> None:
         console.print(f"[red]Regressions:[/] {', '.join(report.regressions)}")
     if report.improvements:
         console.print(f"[green]Improvements:[/] {', '.join(report.improvements)}")
+
+
+# ---------------------------------------------------------------------------
+# export command — graded runs → training-ready trajectories (JSONL)
+# ---------------------------------------------------------------------------
+
+@app.command()
+def export(
+    out: Path = typer.Option(..., "--out", "-o", help="Output JSONL file path."),
+    suite: Path | None = typer.Option(None, help="Suite YAML/JSON: export every passing case."),
+    trace: Path | None = typer.Option(None, help="A single trace JSON (alternative to --suite)."),
+    case: Path | None = typer.Option(None, help="Eval case for the single --trace."),
+    fmt: str = typer.Option("messages", "--format", help="Trajectory format: messages | sft."),
+    min_score: float = typer.Option(0.0, help="Minimum NARI score (0-100) to include a run."),
+    require_pass: bool = typer.Option(
+        True, "--require-pass/--no-require-pass",
+        help="Only export runs that certify PASS (default: on).",
+    ),
+    max_steps: int | None = typer.Option(None, help="Compression: cap reasoning steps per run."),
+    drop_observations: bool = typer.Option(
+        False, "--drop-observations", help="Compression: drop observation steps.",
+    ),
+) -> None:
+    """Export high-scoring graded runs as a training-ready JSONL dataset.
+
+    Ninja Harness grades runs; this curates the good ones into trajectories for
+    fine-tuning. Curation is honest: scores + certifications travel with each
+    example, and only runs that clear the bar are written.
+    """
+    if not suite and not trace:
+        console.print("[bold red]Error:[/] provide --suite or --trace.")
+        raise typer.Exit(1)
+
+    runner = EvaluationRunner()
+    pairs: list[tuple[AgentRun, EvaluationResult]] = []
+    try:
+        if suite:
+            spec = load_suite(suite)
+            for cspec in spec.cases:
+                run_obj, _c, result = runner.run_from_files(cspec.trace, cspec.case)
+                pairs.append((run_obj, result))
+        else:
+            run_obj, _c, result = runner.run_from_files(trace, case)  # type: ignore[arg-type]
+            pairs.append((run_obj, result))
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    try:
+        examples, summary = export_runs(
+            pairs, fmt=fmt, min_score=min_score, require_pass=require_pass,
+            max_steps=max_steps, drop_observations=drop_observations,
+        )
+    except ValueError as exc:
+        console.print(f"[bold red]Error:[/] {exc}")
+        raise typer.Exit(1) from exc
+
+    write_jsonl(examples, out)
+    dist = " ".join(f"{k}:{v}" for k, v in sorted(summary.by_certification.items()))
+    console.print(
+        f"[green]Exported[/] {summary.exported}/{summary.total_candidates} run(s) "
+        f"→ {out}  [dim]({summary.format}; min_score={summary.min_score}; "
+        f"require_pass={summary.require_pass}; skipped={summary.skipped}; {dist})[/]"
+    )
+    if summary.exported == 0:
+        console.print("[yellow]No runs qualified.[/] Lower --min-score or use --no-require-pass.")
 
 
 if __name__ == "__main__":

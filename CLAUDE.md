@@ -137,6 +137,19 @@ not extrapolations — keep them honest.
 - docs/vendor wheel + docs/index.html WHEEL_VERSION must be bumped on each
   release (they pin the version the Pages playground loads).
 
+## v0.9 (shipped — trajectory export)
+
+- `export.py` + `export` CLI: graded runs → training-ready JSONL. Honest
+  curation — only runs that clear the bar (PASS and/or `--min-score`) are
+  written, and the score + certification travel with each example (never
+  fabricate scores or trajectories). Formats: `messages` (OpenAI-style chat w/
+  tool calls) and `sft`. Optional compression (`--max-steps`,
+  `--drop-observations`) trims reasoning steps but preserves task/final/tools.
+  `TrajectoryExample` / `TrajectoryExportSummary` in schemas. Deterministic, no
+  LLM calls. Core: `export_runs(pairs, ...)`; CLI reads a `--suite` or `--trace`.
+- NOTE: the GitHub Pages playground (`docs/`) `WHEEL_VERSION` stays pinned to the
+  last *published* PyPI version — only bump it once 0.9.0 is actually on PyPI.
+
 ## Remaining (v1.0)
 
 - `diff`, grounding judge, pytest plugin, native OTLP/protobuf ingest, HTML
